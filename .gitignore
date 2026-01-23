@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Mix On assets (original files, too large for git)
+Mix On News/*.mp4
+Mix On News/*.zip
+Mix On News/banner-extracted/
+
+/app/generated/prisma

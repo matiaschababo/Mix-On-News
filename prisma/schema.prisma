@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  url         String   @unique
+  title       String
+  summary     String?
+  source      String
+  category    String
+  relevance   Int      // 0-100 score from AI
+  publishedAt DateTime?
+  scrapedAt   DateTime @default(now())
+
+  // Relation for user interactions
+  interactions UserInteraction[]
+
+  @@index([category])
+  @@index([relevance])
+  @@index([scrapedAt])
+}
+
+// Track user interactions with articles (likes, reads, etc.)
+model UserInteraction {
+  id          String   @id @default(cuid())
+  articleId   String
+  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  
+  interactionType String  // "like", "read", "dislike"
+  createdAt   DateTime @default(now())
+  
+  @@index([articleId])
+  @@index([createdAt])
+}
+
+// Store learned user preferences
+model UserPreferences {
+  id              String   @id @default(cuid())
+  
+  // JSON stringified preferences learned from interactions
+  preferredCategories  String @default("{}")  // {"Debate": 0.9, "Tendencia": 0.7}
+  preferredSources     String @default("{}")  // {"La Nación": 0.8}
+  preferredTopics      String @default("[]")  // ["streaming", "rosario"]
+  
+  // Stats
+  totalInteractions Int @default(0)
+  lastAnalyzedAt    DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
