@@ -29,7 +29,7 @@ const LOGO_MAP: Record<string, string> = {
   'Infobae': '/logo-infobae.png',
   'La Nacion': '/logo-lanacion.png',
   'La Capital': '/logo-lacapital.png',
-  'Rosario3': '/logo-rosario3.png',
+  'Rosario3': '/logo-rosario3.svg',
 };
 
 // Helper: Normalize strings (remove accents, lowercase)
@@ -376,11 +376,22 @@ export default function Home() {
                     }
                      `}
                 >
-                  {logo && source !== 'Todos' && (
-                    <img src={logo} alt={source} className="h-4 w-auto object-contain" />
+                  {logo && source !== 'Todos' ? (
+                    <img
+                      src={logo}
+                      alt={source}
+                      className={`h-6 w-auto object-contain ${
+                        // Invert only text-heavy black/blue logos to white for dark mode.
+                        // Infobae (Orange) and Rosario3 (SVG provided) should keep original colors.
+                        ['La Capital', 'La Nacion'].some(s => source.includes(s))
+                          ? 'brightness-0 invert'
+                          : ''
+                        }`}
+                    />
+                  ) : (
+                    <span>{source}</span>
                   )}
-                  <span>{source}</span>
-                  <span className="opacity-50 text-[10px]">({count})</span>
+                  <span className="opacity-50 text-[10px] ml-1">({count})</span>
                 </button>
               );
             })}
