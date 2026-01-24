@@ -220,26 +220,55 @@ export default function Home() {
           />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 relative z-10">
           {/* Top Row: Logo + Info + Actions */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0 mb-4">
             {/* Logo + News */}
-            <div className="flex items-center gap-3">
-              <img
-                src="/mixon-logo.png"
-                alt="Mix On"
-                className="h-12 w-auto"
-              />
-              <div>
-                <h1 className="text-3xl font-bold text-white">
-                  News
-                </h1>
-                <p className="text-gray-400 text-sm">Tu radar de noticias inteligente</p>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/mixon-logo.png"
+                  alt="Mix On"
+                  className="h-10 sm:h-12 w-auto"
+                />
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                    News
+                  </h1>
+                  <p className="text-gray-400 text-xs sm:text-sm">Tu radar inteligente</p>
+                </div>
+              </div>
+
+              {/* Mobile Actions (moved here for better space usage) */}
+              <div className="flex sm:hidden gap-2">
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="p-2 bg-gradient-to-r from-[#FF00FF] to-[#CC00CC] text-white rounded-lg disabled:opacity-50"
+                >
+                  <svg className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button
+                  onClick={async () => {
+                    if (confirm('¿Resetear feed?')) {
+                      setRefreshing(true);
+                      try { await fetch('/api/admin/reset', { method: 'POST' }); window.location.reload(); } catch (e) { }
+                    }
+                  }}
+                  className="p-2 bg-red-900/30 text-red-300 border border-red-500/30 rounded-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             </div>
 
-            {/* Right side: Preferences + Refresh */}
-            <div className="flex items-center gap-4">
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex items-center gap-4">
+
               {/* Preferences Indicator */}
               {preferences && preferences.totalInteractions > 0 && (
                 <div className="hidden md:block text-sm bg-gradient-to-r from-[#FF00FF]/20 to-[#CC00CC]/20 px-4 py-2 rounded-xl border-2 border-[#FF00FF]/40 shadow-lg shadow-[#FF00FF]/30">
