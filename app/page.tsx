@@ -25,6 +25,7 @@ interface NewsResponse {
 export default function Home() {
   const [news, setNews] = useState<NewsResponse | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+  const [selectedSource, setSelectedSource] = useState<string>('Todos');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [likedArticles, setLikedArticles] = useState<Set<string>>(new Set());
@@ -156,10 +157,24 @@ export default function Home() {
     );
   }
 
-  const filteredArticles = (selectedCategory === 'Todos'
-    ? news?.articles
-    : news?.articles.filter(a => a.category === selectedCategory))
-    ?.filter(article => !dislikedArticles.has(article.id));
+  // Derived unique sources from news
+  const sources = news?.articles
+    ? ['Todos', ...Array.from(new Set(news.articles.map(a => a.source)))]
+    : ['Todos'];
+
+  // Helper: Get available categories given the selected source (Nested Logic)
+  const availableCategories = news?.articles
+    ? Array.from(new Set(
+      news.articles
+        .filter(a => selectedSource === 'Todos' || a.source === selectedSource)
+        .map(a => a.category)
+    ))
+    : [];
+
+  const filteredArticles = news?.articles
+    ?.filter(article => !dislikedArticles.has(article.id))
+    ?.filter(article => selectedSource === 'Todos' || article.source === selectedSource)
+    ?.filter(article => selectedCategory === 'Todos' || article.category === selectedCategory);
 
   // Function to get consistent color for any category
   const getCategoryColor = (category: string) => {
@@ -349,8 +364,29 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Source Filters */}
+          <div className="flex gap-2 mt-6 overflow-x-auto pb-2 items-center no-scrollbar">
+            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mr-2 hidden sm:block">Medios:</span>
+            {sources.map(source => (
+              <button
+                key={source}
+                onClick={() => {
+                  setSelectedSource(source);
+                  setSelectedCategory('Todos');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${selectedSource === source
+                    ? 'bg-white text-black border-white'
+                    : 'bg-transparent text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
+                  }`}
+              >
+                {source}
+              </button>
+            ))}
+          </div>
+
           {/* Category Filters */}
-          <div className="flex gap-2 mt-6 overflow-x-auto pb-2">
+          <div className="flex gap-2 overflow-x-auto pb-2 items-center no-scrollbar">
+            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mr-2 hidden sm:block">Secciones:</span>
             <button
               onClick={() => setSelectedCategory('Todos')}
               className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all ${selectedCategory === 'Todos'
@@ -358,11 +394,16 @@ export default function Home() {
                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
             >
-              Todos ({news?.total || 0})
+              Todos
             </button>
 
-            {news?.categories.map(category => {
-              const count = news.articles.filter(a => a.category === category).length;
+            {availableCategories.map(category => {
+              // Count only visible articles for this category/source combination
+              const count = news?.articles?.filter(a =>
+                a.category === category &&
+                (selectedSource === 'Todos' || a.source === selectedSource)
+              ).length || 0;
+
               return (
                 <button
                   key={category}
