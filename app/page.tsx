@@ -381,9 +381,10 @@ export default function Home() {
                       src={logo}
                       alt={source}
                       className={`h-6 w-auto object-contain ${
-                        // Invert only text-heavy black/blue logos to white for dark mode.
-                        // Infobae (Orange) and Rosario3 (SVG provided) should keep original colors.
-                        ['La Capital', 'La Nacion'].some(s => source.includes(s))
+                        // Invert ONLY La Nacion (transparent black text) to white for dark mode.
+                        // La Capital has a white background (no invert needed).
+                        // Infobae and Rosario3 have brand colors.
+                        ['La Nacion'].some(s => source.includes(s))
                           ? 'brightness-0 invert'
                           : ''
                         }`}
