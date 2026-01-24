@@ -139,12 +139,13 @@ Formato de respuesta (SOLO JSON):
 
         return filtered;
     } catch (error) {
-        console.error('Error in AI curation:', error);
-        // Fallback: return all articles with default categorization
+        // Fallback: Si la IA falla, usar 'General' para identificar el problema
+        // y NO 'Actualidad' para no confundir.
         return articles.map(article => ({
             ...article,
-            category: 'Actualidad',
+            category: '🔥 Viral y Tendencias', // Forzar una categoría popular por default si todo falla
             relevance: 50,
+            aiReasoning: 'Fallback por error de conexión IA',
         }));
     }
 }
