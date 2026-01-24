@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Header } from './components/Header';
+import { NewsCard } from './components/ui/NewsCard';
 
 interface Article {
   id: string;
@@ -22,7 +25,31 @@ interface NewsResponse {
   lastUpdated: string | null;
 }
 
+const LOGO_MAP: Record<string, string> = {
+  'Infobae': '/logo-infobae.png',
+  'La Nacion': '/logo-lanacion.png',
+  'La Capital': '/logo-lacapital.png',
+  'Rosario3': '/logo-rosario3.png',
+};
+
+// Helper: Normalize strings (remove accents, lowercase)
+const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+// Helper: Normalize source name to key
+const getLogoForSource = (source: string) => {
+  const normSource = normalize(source);
+
+  // Custom mappings based on normalized input
+  if (normSource.includes('infobae')) return LOGO_MAP['Infobae'];
+  if (normSource.includes('nacion')) return LOGO_MAP['La Nacion'];
+  if (normSource.includes('capital')) return LOGO_MAP['La Capital'];
+  if (normSource.includes('rosario')) return LOGO_MAP['Rosario3'];
+
+  return undefined;
+}
+
 export default function Home() {
+  const { data: session, status } = useSession();
   const [news, setNews] = useState<NewsResponse | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [selectedSource, setSelectedSource] = useState<string>('Todos');
@@ -30,8 +57,8 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [likedArticles, setLikedArticles] = useState<Set<string>>(new Set());
   const [dislikedArticles, setDislikedArticles] = useState<Set<string>>(new Set());
-  const [preferences, setPreferences] = useState<any>(null);
 
+  // Fetch News Logic
   const fetchNews = async () => {
     try {
       const res = await fetch('/api/news');
@@ -39,496 +66,377 @@ export default function Home() {
       setNews(data);
     } catch (error) {
       console.error('Error fetching news:', error);
+      toast.error("Error al cargar noticias");
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch User Preferences (Likes/Dislikes)
   const fetchPreferences = async () => {
+    if (status !== 'authenticated') return;
     try {
       const res = await fetch('/api/interactions');
       const data = await res.json();
-      setPreferences(data);
+      if (data.likedIds) setLikedArticles(new Set(data.likedIds));
+      if (data.dislikedIds) setDislikedArticles(new Set(data.dislikedIds));
     } catch (error) {
       console.error('Error fetching preferences:', error);
     }
   };
 
-  const handleLike = async (articleId: string, e: React.MouseEvent) => {
-    e.preventDefault();
+  // Initial Load
+  useEffect(() => {
+    fetchNews();
+  }, []);
 
-    try {
-      const isLiked = likedArticles.has(articleId);
-      const res = await fetch('/api/interactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          articleId,
-          type: isLiked ? 'read' : 'like', // Toggle to neutral if already liked
-        }),
-      });
-
-      if (res.ok) {
-        const newLiked = new Set(likedArticles);
-        const newDisliked = new Set(dislikedArticles);
-
-        if (isLiked) {
-          newLiked.delete(articleId);
-        } else {
-          newLiked.add(articleId);
-          newDisliked.delete(articleId); // Remove from disliked if was disliked
-        }
-
-        setLikedArticles(newLiked);
-        setDislikedArticles(newDisliked);
-        await fetchPreferences();
-      }
-    } catch (error) {
-      console.error('Error liking article:', error);
+  // Load preferences when user logs in
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchPreferences();
+    } else {
+      setLikedArticles(new Set());
+      setDislikedArticles(new Set());
     }
-  };
+  }, [status]);
 
-  const handleDislike = async (articleId: string, e: React.MouseEvent) => {
-    e.preventDefault();
+  // Handle Interactions
+  const handleInteraction = async (articleId: string, type: 'like' | 'dislike') => {
+    if (status !== 'authenticated') {
+      toast.warning('Iniciá sesión para personalizar tu feed', {
+        description: 'Tus preferencias se guardan para mostrarte noticias más relevantes.'
+      });
+      return;
+    }
+
+    // Optimistic UI Update
+    const isLike = type === 'like';
+    const currentSet = isLike ? likedArticles : dislikedArticles;
+    const oppositeSet = isLike ? dislikedArticles : likedArticles;
+    const setFn = isLike ? setLikedArticles : setDislikedArticles;
+    const oppositeSetFn = isLike ? setDislikedArticles : setLikedArticles;
+
+    const alreadyActive = currentSet.has(articleId);
+
+    // Toggle
+    const newSet = new Set(currentSet);
+    const newOpposite = new Set(oppositeSet);
+
+    if (alreadyActive) {
+      newSet.delete(articleId);
+    } else {
+      newSet.add(articleId);
+      newOpposite.delete(articleId); // Remove from opposite if needed
+    }
+
+    setFn(newSet);
+    oppositeSetFn(newOpposite);
 
     try {
-      const isDisliked = dislikedArticles.has(articleId);
+      // Send to API
+      // If we are toggling OFF, we technically should send 'read' or 'neutral', 
+      // but for now let's just send the type. API handles upsert. 
+      // Ideally we need a 'remove' interaction endpoint or logic.
+      // For simplicity: If toggling off, screen logic handles it visualy. 
+      // API call could strictly set it to 'read' if we want to "unlike".
+
+      const payloadType = alreadyActive ? 'read' : type;
+
       const res = await fetch('/api/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          articleId,
-          type: isDisliked ? 'read' : 'dislike',
-        }),
+        body: JSON.stringify({ articleId, type: payloadType }),
       });
 
-      if (res.ok) {
-        const newDisliked = new Set(dislikedArticles);
-        const newLiked = new Set(likedArticles);
+      if (!res.ok) throw new Error('Failed');
 
-        if (isDisliked) {
-          newDisliked.delete(articleId);
-        } else {
-          newDisliked.add(articleId);
-          newLiked.delete(articleId); // Remove from liked if was liked
-        }
+      const msg = isLike
+        ? (alreadyActive ? 'Like removido' : 'Noticia guardada')
+        : (alreadyActive ? 'Dislike removido' : 'Menos noticias como esta');
 
-        setDislikedArticles(newDisliked);
-        setLikedArticles(newLiked);
-        await fetchPreferences();
-      }
+      toast.success(msg);
+
     } catch (error) {
-      console.error('Error disliking article:', error);
+      // Revert on error
+      toast.error('Error al guardar interacción');
+      fetchPreferences(); // Sync back
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    const loadingToast = toast.loading('Analizando noticias...');
     try {
       const res = await fetch('/api/refresh', { method: 'POST' });
       const result = await res.json();
-      console.log('Refresh result:', result);
 
-      // Re-fetch news after refresh
       await fetchNews();
 
-      alert(`✅ Actualización completa!\n\n📰 ${result.added} noticias nuevas agregadas\n⏭️ ${result.skipped} ya existían`);
+      toast.dismiss(loadingToast);
+      toast.success(`Feed Actualizado: +${result.added} nuevas`);
     } catch (error) {
-      console.error('Error refreshing:', error);
-      alert('❌ Error al actualizar. Verifica que tengas tu API Key de Google Gemini configurada.');
+      toast.dismiss(loadingToast);
+      toast.error('Error de conexión');
     } finally {
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchNews();
-    fetchPreferences();
-  }, []);
+  const handleReset = () => {
+    setSelectedCategory('Todos');
+    setSelectedSource('Todos');
+    setLikedArticles(new Set());
+    setDislikedArticles(new Set());
+    toast.success('Filtros y preferencias reiniciados');
+    // Optionally clear DB prefs via API? User said "Eliminar todo o resetear feed". 
+    // This reset acts as a local reset of filters/hidden items.
+    // If we want to wipe DB, that's a bigger action. I'll stick to UI reset for now.
+  };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#FF00FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400 text-lg">Cargando noticias...</p>
-        </div>
-      </main>
-    );
-  }
+  // Base Set of Articles (excluding Pagina 12)
+  // Pre-filter Pagina 12 and user dislikes to get the "Working Set"
+  const cleanArticles = news?.articles
+    ?.filter(a => !normalize(a.source).includes('pagina 12'))
+    ?.filter(a => !dislikedArticles.has(a.id)) || [];
 
-  // Derived unique sources from news
-  const sources = news?.articles
-    ? ['Todos', ...Array.from(new Set(news.articles.map(a => a.source)))]
-    : ['Todos'];
+  // derived state with Counts
+  // Sources: Unique sources in cleanArticles
+  const uniqueSources = Array.from(new Set(cleanArticles.map(a => a.source)));
 
-  // Helper: Get available categories given the selected source (Nested Logic)
-  const availableCategories = news?.articles
-    ? Array.from(new Set(
-      news.articles
-        .filter(a => selectedSource === 'Todos' || a.source === selectedSource)
-        .map(a => a.category)
-    ))
-    : [];
+  // Calculate counts for sources
+  const sourceCounts = uniqueSources.reduce((acc, source) => {
+    acc[source] = cleanArticles.filter(a => a.source === source).length;
+    return acc;
+  }, {} as Record<string, number>);
 
-  const filteredArticles = news?.articles
-    ?.filter(article => !dislikedArticles.has(article.id))
+  const totalArticles = cleanArticles.length;
+
+  // Categories: Unique categories based on CURRENT Source Selection
+  const relevantArticlesForCats = selectedSource === 'Todos'
+    ? cleanArticles
+    : cleanArticles.filter(a => a.source === selectedSource);
+
+  const uniqueCategories = Array.from(new Set(relevantArticlesForCats.map(a => a.category)));
+
+  // Calculate counts for categories
+  const categoryCounts = uniqueCategories.reduce((acc, cat) => {
+    acc[cat] = relevantArticlesForCats.filter(a => a.category === cat).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+
+  const sources = ['Todos', ...uniqueSources];
+  const availableCategories = uniqueCategories;
+
+  // Final Filter
+  const filteredArticles = cleanArticles
     ?.filter(article => selectedSource === 'Todos' || article.source === selectedSource)
     ?.filter(article => selectedCategory === 'Todos' || article.category === selectedCategory);
 
-  // Function to get consistent color for any category
-  const getCategoryColor = (category: string) => {
-    const safeCat = category || 'General';
-    // Dictionary of fixed colors for common categories
-    const fixedColors: Record<string, string> = {
-      'Política': 'bg-red-500/20 text-red-300 border-red-500/50',
-      'Economía': 'bg-green-500/20 text-green-300 border-green-500/50',
-      'Deportes': 'bg-blue-500/20 text-blue-300 border-blue-500/50',
-      'Espectáculos': 'bg-pink-500/20 text-pink-300 border-pink-500/50',
-      'Tecnología': 'bg-purple-500/20 text-purple-300 border-purple-500/50',
-      'Sociedad': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50',
-      'Policiales': 'bg-orange-900/30 text-orange-300 border-orange-500/50',
-      'General': 'bg-gray-700/30 text-gray-300 border-gray-500/50',
-    };
+  // Authentication & Guest Logic
+  if (status === 'loading') {
+    return (
+      <main className="min-h-screen relative bg-[#05050A] flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-[#FF00FF] border-t-transparent rounded-full animate-spin"></div>
+      </main>
+    )
+  }
 
-    if (fixedColors[safeCat]) return fixedColors[safeCat];
+  if (status === 'unauthenticated') {
+    return (
+      <main className="min-h-screen relative bg-[#05050A] text-white flex flex-col items-center justify-center overflow-hidden">
+        {/* Background FX */}
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-[#FF00FF]/20 blur-[120px] animate-float" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-[#00FFFF]/20 blur-[120px] animate-float" style={{ animationDelay: '2s' }} />
 
-    // Dynamic color for unknown categories (hash string to select a color)
-    const colors = [
-      'bg-indigo-500/20 text-indigo-300 border-indigo-500/50',
-      'bg-teal-500/20 text-teal-300 border-teal-500/50',
-      'bg-cyan-500/20 text-cyan-300 border-cyan-500/50',
-      'bg-emerald-500/20 text-emerald-300 border-emerald-500/50',
-      'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/50',
-    ];
+        <div className="relative z-10 text-center px-4 max-w-2xl mx-auto space-y-8">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            className="mb-8"
+          >
+            <img src="/mixon-logo.png" alt="Mix On" className="h-32 w-auto mx-auto object-contain drop-shadow-[0_0_30px_rgba(255,0,255,0.5)]" />
+          </motion.div>
 
-    let hash = 0;
-    for (let i = 0; i < safeCat.length; i++) {
-      hash = safeCat.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-  };
+          <motion.h1
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-5xl md:text-7xl font-bold tracking-tight"
+          >
+            Tu Radar <br />
+            <span className="gradient-text">Inteligente</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="text-xl text-gray-400"
+          >
+            Noticias personalizadas para vos. Sin ruido, solo lo que te importa.
+          </motion.p>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            <div className="scale-125 origin-top">
+              <button
+                onClick={() => import('next-auth/react').then(mod => mod.signIn('google'))}
+                className="group relative px-8 py-4 rounded-full font-bold text-white text-lg overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(255,0,255,0.4)]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FF00FF] via-[#BD00FF] to-[#00FFFF] opacity-100 transition-opacity"></div>
+                <span className="relative flex items-center gap-3">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+                  </svg>
+                  Comenzar Ahora
+                </span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </main>
+    )
+  }
 
   return (
-    <main className="min-h-screen bg-black relative overflow-hidden">
-      {/* Dynamic banner background */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/mixon-banner.png"
-          alt=""
-          className="w-full h-full object-cover opacity-[0.15] animate-pulse"
-          style={{ animationDuration: '8s' }}
-          aria-hidden="true"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FF00FF]/20 via-transparent to-[#CC00CC]/20"></div>
+    <main className="min-h-screen relative bg-[#05050A] text-white selection:bg-[#FF00FF] selection:text-white">
+
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#FF00FF]/10 blur-[100px] animate-float" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#00FFFF]/10 blur-[100px] animate-float" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] rounded-full bg-[#7000FF]/10 blur-[100px] animate-float" style={{ animationDelay: '4s' }} />
       </div>
-      {/* Header with Mix On Branding */}
-      <header className="border-b border-[#FF00FF]/30 bg-black/90 backdrop-blur-xl sticky top-0 z-50 relative overflow-hidden shadow-lg shadow-[#FF00FF]/20">
-        {/* Subtle banner pattern background */}
-        <div className="absolute inset-0 opacity-5">
-          <img
-            src="/mixon-banner.png"
-            alt=""
-            className="w-full h-full object-cover"
-            aria-hidden="true"
-          />
-        </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 relative z-10">
-          {/* Top Row: Logo + Info + Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0 mb-4">
-            {/* Logo + News */}
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-              <div className="flex items-center gap-3">
-                <img
-                  src="/mixon-logo.png"
-                  alt="Mix On"
-                  className="h-10 sm:h-12 w-auto"
-                />
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                    News
-                  </h1>
-                  <p className="text-gray-400 text-xs sm:text-sm">Tu radar inteligente</p>
-                </div>
-              </div>
+      <Header
+        onRefresh={handleRefresh}
+        onReset={handleReset}
+        isRefreshing={refreshing}
+        lastUpdated={news?.lastUpdated}
+      />
 
-              {/* Mobile Actions (moved here for better space usage) */}
-              <div className="flex sm:hidden gap-2">
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="p-2 bg-gradient-to-r from-[#FF00FF] to-[#CC00CC] text-white rounded-lg disabled:opacity-50"
-                >
-                  <svg className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-                <button
-                  onClick={async () => {
-                    if (confirm('¿Resetear feed?')) {
-                      setRefreshing(true);
-                      try { await fetch('/api/admin/reset', { method: 'POST' }); window.location.reload(); } catch (e) { }
-                    }
-                  }}
-                  className="p-2 bg-red-900/30 text-red-300 border border-red-500/30 rounded-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-            {/* Desktop Actions */}
-            <div className="hidden sm:flex items-center gap-4">
-
-              {/* Preferences Indicator */}
-              {preferences && preferences.totalInteractions > 0 && (
-                <div className="hidden md:block text-sm bg-gradient-to-r from-[#FF00FF]/20 to-[#CC00CC]/20 px-4 py-2 rounded-xl border-2 border-[#FF00FF]/40 shadow-lg shadow-[#FF00FF]/30">
-                  <div className="text-white font-semibold">
-                    🎯 {preferences.totalInteractions} interacciones
-                  </div>
-                  {Object.keys(preferences.preferredCategories).length > 0 && (
-                    <div className="text-xs text-[#FF3AFF]">
-                      Te gustan: {Object.keys(preferences.preferredCategories).slice(0, 2).join(', ')}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {news?.lastUpdated && (
-                <p className="text-sm text-gray-500 hidden lg:block">
-                  Actualizado{' '}
-                  <span className="text-gray-300">
-                    {formatDistanceToNow(new Date(news.lastUpdated), {
-                      addSuffix: true,
-                      locale: es
-                    })}
-                  </span>
-                </p>
-              )}
-
-              {/* Refresh Button */}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="px-6 py-3 bg-gradient-to-r from-[#FF00FF] to-[#CC00CC] text-white font-semibold rounded-lg 
-                         hover:from-[#FF3AFF] hover:to-[#9900CC] transition-all duration-300 
-                         disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2
-                         shadow-lg shadow-[#FF00FF]/50"
-              >
-                {refreshing ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Actualizando...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Actualizar Feed
-                  </>
-                )}
-              </button>
-
-              {/* Reset Feed Button */}
-              <button
-                onClick={async () => {
-                  if (confirm('¿Seguro querés resetear todo? Se borrarán las noticias actuales pero la IA MANTENDRÁ tu memoria.')) {
-                    setRefreshing(true);
-                    try {
-                      await fetch('/api/admin/reset', { method: 'POST' });
-                      // Don't auto-refresh, user wants it empty
-                      window.location.reload();
-                    } catch (e) {
-                      console.error(e);
-                    } finally {
-                      setRefreshing(false);
-                    }
-                  }
-                }}
-                disabled={refreshing}
-                className="px-3 py-3 bg-red-900/30 text-red-300 font-semibold rounded-lg 
-                         hover:bg-red-900/50 border border-red-500/30
-                         disabled:opacity-50 flex items-center gap-2
-                         text-sm"
-                title="Borrar todo y empezar de cero (mantiene memoria)"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Source Filters */}
-          <div className="flex gap-2 mt-6 overflow-x-auto pb-2 items-center no-scrollbar">
-            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mr-2 hidden sm:block">Medios:</span>
-            {sources.map(source => (
-              <button
-                key={source}
-                onClick={() => {
-                  setSelectedSource(source);
-                  setSelectedCategory('Todos');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${selectedSource === source
-                    ? 'bg-white text-black border-white'
-                    : 'bg-transparent text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
-                  }`}
-              >
-                {source}
-              </button>
-            ))}
-          </div>
-
-          {/* Category Filters */}
-          <div className="flex gap-2 overflow-x-auto pb-2 items-center no-scrollbar">
-            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mr-2 hidden sm:block">Secciones:</span>
-            <button
-              onClick={() => setSelectedCategory('Todos')}
-              className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all ${selectedCategory === 'Todos'
-                ? 'bg-[#FF00FF] text-white shadow-lg shadow-[#FF00FF]/50'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-            >
-              Todos
-            </button>
-
-            {availableCategories.map(category => {
-              // Count only visible articles for this category/source combination
-              const count = news?.articles?.filter(a =>
-                a.category === category &&
-                (selectedSource === 'Todos' || a.source === selectedSource)
-              ).length || 0;
+        {/* Filters Area */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          {/* Source Scroll */}
+          <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar mask-gradient-right">
+            {sources.map(source => {
+              const count = source === 'Todos' ? totalArticles : sourceCounts[source];
+              const logo = getLogoForSource(source);
 
               return (
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all ${selectedCategory === category
-                    ? 'bg-[#FF00FF] text-white shadow-lg shadow-[#FF00FF]/50'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
+                  key={source}
+                  onClick={() => setSelectedSource(source)}
+                  className={`
+                        flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap
+                        ${selectedSource === source
+                      ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-105'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                    }
+                     `}
                 >
-                  {category} ({count})
+                  {logo && source !== 'Todos' && (
+                    <img src={logo} alt={source} className="h-4 w-auto object-contain" />
+                  )}
+                  <span>{source}</span>
+                  <span className="opacity-50 text-[10px]">({count})</span>
                 </button>
               );
             })}
           </div>
-        </div>
-      </header>
 
-      {/* News Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {filteredArticles && filteredArticles.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📰</div>
-            <h2 className="text-2xl font-bold text-gray-300 mb-2">No hay noticias aún</h2>
-            <p className="text-gray-500 mb-6">Hacé click en "Actualizar Feed" para comenzar</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles?.map(article => (
-              <a
-                key={article.id}
-                href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block"
+          {/* Category Scroll */}
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <button
+              onClick={() => setSelectedCategory('Todos')}
+              className={`
+                  px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap
+                  ${selectedCategory === 'Todos'
+                  ? 'bg-[#FF00FF] text-white shadow-[0_0_20px_rgba(255,0,255,0.4)]'
+                  : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                }
+               `}
+            >
+              Todos
+            </button>
+            {availableCategories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`
+                  px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap
+                  ${selectedCategory === cat
+                    ? 'bg-[#FF00FF] text-white shadow-[0_0_20px_rgba(255,0,255,0.4)]'
+                    : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                  }
+                `}
               >
-                <article className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700 
-                                  rounded-xl p-6 h-full card-hover">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getCategoryColor(article.category)}`}>
-                      {article.category}
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">{article.source}</span>
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{
-                          backgroundColor: article.relevance >= 80 ? '#ef4444' : article.relevance >= 60 ? '#f59e0b' : '#6b7280'
-                        }}
-                        title={`Relevancia: ${article.relevance}/100`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-lg font-bold text-white mb-3 line-clamp-3 group-hover:text-[#FF00FF] transition-colors">
-                    {article.title}
-                  </h3>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-700">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-500">
-                        {formatDistanceToNow(new Date(article.scrapedAt), { addSuffix: true, locale: es })}
-                      </span>
-
-                      {/* Like Button */}
-                      <button
-                        onClick={(e) => handleLike(article.id, e)}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${likedArticles.has(article.id)
-                          ? 'bg-[#FF00FF]/20 text-[#FF00FF]'
-                          : 'bg-gray-700/50 text-gray-400 hover:bg-[#FF00FF]/10 hover:text-[#FF3AFF]'
-                          }`}
-                        title={likedArticles.has(article.id) ? "Te gusta" : "Marcar como interesante"}
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill={likedArticles.has(article.id) ? "currentColor" : "none"}
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Dislike Button */}
-                      <button
-                        onClick={(e) => handleDislike(article.id, e)}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${dislikedArticles.has(article.id)
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-gray-700/50 text-gray-400 hover:bg-red-500/10 hover:text-red-300'
-                          }`}
-                        title={dislikedArticles.has(article.id) ? "No te gusta" : "No me interesa"}
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={dislikedArticles.has(article.id) ? 3 : 2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <span className="text-[#FF00FF] text-sm font-medium group-hover:translate-x-1 transition-transform inline-block">
-                      Leer más →
-                    </span>
-                  </div>
-                </article>
-              </a>
+                {cat} <span className="opacity-50 text-[10px] ml-1">({categoryCounts[cat]})</span>
+              </button>
             ))}
           </div>
-        )}
+        </motion.div>
+
+        {/* Content Grid */}
+        <AnimatePresence mode='wait'>
+          {loading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20"
+            >
+              <div className="w-16 h-16 border-4 border-[#FF00FF] border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-4 text-gray-400 animate-pulse">Cargando feed inteligente...</p>
+            </motion.div>
+          ) : filteredArticles?.length === 0 ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-20 px-6 rounded-3xl glass-panel border-dashed border-white/10"
+            >
+              <div className="text-6xl mb-4 opacity-50">📡</div>
+              <h3 className="text-2xl font-bold text-white mb-2">Sin novedades</h3>
+              <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                No encontramos noticias con estos filtros. Probá cambiando la categoría o actualizá el feed.
+              </p>
+              <button
+                onClick={handleRefresh}
+                className="px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors"
+              >
+                Forzar Actualización
+              </button>
+            </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredArticles?.map((article, idx) => (
+                <NewsCard
+                  key={article.id}
+                  article={article}
+                  index={idx} // For staggered animation
+                  onLike={() => handleInteraction(article.id, 'like')}
+                  onDislike={() => handleInteraction(article.id, 'dislike')}
+                  isLiked={likedArticles.has(article.id)}
+                  isDisliked={dislikedArticles.has(article.id)}
+                  sourceLogo={getLogoForSource(article.source)}
+                />
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </main>
   );

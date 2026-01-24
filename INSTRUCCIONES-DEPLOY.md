@@ -49,12 +49,12 @@ Si te pide usuario/password, usá un **Personal Access Token** (no tu password):
    |--------------|-------|
    | `GOOGLE_GEMINI_API_KEY` | **(Pegá tu API key de Gemini)** |
    | `CRON_SECRET` | `mixon2024secret` (o inventá otro) |
+   | `GOOGLE_CLIENT_ID` | **(Copiá de tu .env)** |
+   | `GOOGLE_CLIENT_SECRET` | **(Copiá de tu .env)** |
+   | `AUTH_SECRET` | Inventá una clave larga (ej: `mixon-prod-secret-123`) |
 
-   **¿Dónde está tu API key?**
-   Ejecutá esto en la terminal:
-   ```bash
-   grep GOOGLE_GEMINI_API_KEY /Users/matiaschababo/.gemini/antigravity/scratch/mixon-news-aggregator/.env
-   ```
+   **¿Dónde están tus claves?**
+   Las tenés todas en tu archivo local `.env`. Copialas de ahí.
 
 5. Click **"Deploy"**
 

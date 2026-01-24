@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { auth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: Request) {
     try {
+        const session = await auth();
+
+        if (!session || !session.user || !session.user.id) {
+            return NextResponse.json(
+                { error: 'Unauthorized. Please sign in.' },
+                { status: 401 }
+            );
+        }
+
+        const userId = session.user.id;
         const body = await request.json();
         const { articleId, type } = body;
 
@@ -37,39 +48,61 @@ export async function POST(request: Request) {
             );
         }
 
-        // Record the interaction
-        const interaction = await prisma.userInteraction.create({
-            data: {
-                articleId,
-                interactionType: type,
-            },
+        // Record or Update the interaction
+        // If user already interacted, we might want to update it (e.g. read -> like)
+        // For simplicity, let's upsert or create new
+
+        // Check if interaction exists
+        const existingInteraction = await prisma.userInteraction.findFirst({
+            where: {
+                userId,
+                articleId
+            }
         });
 
-        // Update total interactions count in preferences
-        let preferences = await prisma.userPreferences.findFirst();
-
-        if (!preferences) {
-            // Create preferences entry if doesn't exist
-            preferences = await prisma.userPreferences.create({
-                data: {
-                    totalInteractions: 1,
-                },
+        if (existingInteraction) {
+            // Update existing
+            await prisma.userInteraction.update({
+                where: { id: existingInteraction.id },
+                data: { interactionType: type }
             });
         } else {
-            // Update interaction count
-            await prisma.userPreferences.update({
-                where: { id: preferences.id },
+            // Create new
+            await prisma.userInteraction.create({
                 data: {
-                    totalInteractions: preferences.totalInteractions + 1,
+                    userId,
+                    articleId,
+                    interactionType: type,
                 },
             });
         }
 
-        console.log(`✅ Recorded ${type} interaction for article ${articleId}`);
+        // Update total interactions count in preferences
+        // Find pref for THIS user
+        let preferences = await prisma.userPreferences.findUnique({
+            where: { userId }
+        });
+
+        if (!preferences) {
+            preferences = await prisma.userPreferences.create({
+                data: {
+                    userId,
+                    totalInteractions: 1,
+                },
+            });
+        } else {
+            // Update interaction count (approximate, really should query count)
+            // Or just increment
+            await prisma.userPreferences.update({
+                where: { id: preferences.id },
+                data: {
+                    totalInteractions: { increment: 1 },
+                },
+            });
+        }
 
         return NextResponse.json({
             success: true,
-            interaction,
             totalInteractions: (preferences.totalInteractions || 0) + 1,
         });
 
@@ -83,13 +116,13 @@ export async function POST(request: Request) {
 }
 
 /**
- * GET - Retrieve user preferences and interaction stats
+ * GET - Retrieve user preferences for the LOGGED IN user
  */
 export async function GET() {
     try {
-        const preferences = await prisma.userPreferences.findFirst();
+        const session = await auth();
 
-        if (!preferences) {
+        if (!session || !session.user || !session.user.id) {
             return NextResponse.json({
                 totalInteractions: 0,
                 preferredCategories: {},
@@ -99,12 +132,41 @@ export async function GET() {
             });
         }
 
+        const userId = session.user.id;
+
+        const preferences = await prisma.userPreferences.findUnique({
+            where: { userId }
+        });
+
+        // Also fetch direct interactions to fill the "Liked/Disliked" sets on frontend
+        const interactions = await prisma.userInteraction.findMany({
+            where: { userId },
+            select: { articleId: true, interactionType: true }
+        });
+
+        const likedIds = interactions.filter(i => i.interactionType === 'like').map(i => i.articleId);
+        const dislikedIds = interactions.filter(i => i.interactionType === 'dislike').map(i => i.articleId);
+
+        if (!preferences) {
+            return NextResponse.json({
+                totalInteractions: 0,
+                preferredCategories: {},
+                preferredSources: {},
+                preferredTopics: [],
+                lastAnalyzed: null,
+                likedIds,
+                dislikedIds
+            });
+        }
+
         return NextResponse.json({
             totalInteractions: preferences.totalInteractions,
             preferredCategories: JSON.parse(preferences.preferredCategories),
             preferredSources: JSON.parse(preferences.preferredSources),
             preferredTopics: JSON.parse(preferences.preferredTopics),
             lastAnalyzed: preferences.lastAnalyzedAt,
+            likedIds,
+            dislikedIds
         });
 
     } catch (error) {
