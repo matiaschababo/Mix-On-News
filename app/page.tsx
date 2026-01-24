@@ -156,18 +156,19 @@ export default function Home() {
     );
   }
 
-  const filteredArticles = selectedCategory === 'Todos'
+  const filteredArticles = (selectedCategory === 'Todos'
     ? news?.articles
-    : news?.articles.filter(a => a.category === selectedCategory);
+    : news?.articles.filter(a => a.category === selectedCategory))
+    ?.filter(article => !dislikedArticles.has(article.id));
 
   const categoryColors: Record<string, string> = {
-    'Twitter': 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50',
-    'Debate': 'bg-red-500/20 text-red-300 border-red-500/50',
-    'Tendencia': 'bg-purple-500/20 text-purple-300 border-purple-500/50',
-    'Rosario': 'bg-blue-500/20 text-blue-300 border-blue-500/50',
-    'Showbiz': 'bg-[#FF00FF]/20 text-[#FF3AFF] border-[#FF00FF]/50',
-    'Actualidad': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50',
-    'Deportes': 'bg-green-500/20 text-green-300 border-green-500/50',
+    '🔥 Viral y Tendencias': 'bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-300 border-orange-500/50',
+    '🗣️ Debate': 'bg-red-500/20 text-red-300 border-red-500/50',
+    '🟣 Streaming & Tech': 'bg-purple-500/20 text-purple-300 border-purple-500/50',
+    '🏙️ Rosario City': 'bg-blue-500/20 text-blue-300 border-blue-500/50',
+    '📺 Showbiz': 'bg-[#FF00FF]/20 text-[#FF3AFF] border-[#FF00FF]/50',
+    '🇦🇷 Actualidad Picante': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50',
+    '⚽ Deportes': 'bg-green-500/20 text-green-300 border-green-500/50',
   };
 
   return (
