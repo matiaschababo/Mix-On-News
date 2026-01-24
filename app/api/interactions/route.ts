@@ -91,8 +91,7 @@ export async function POST(request: Request) {
                 },
             });
         } else {
-            // Update interaction count (approximate, really should query count)
-            // Or just increment
+            // Update interaction count
             await prisma.userPreferences.update({
                 where: { id: preferences.id },
                 data: {
@@ -100,6 +99,13 @@ export async function POST(request: Request) {
                 },
             });
         }
+
+        // --- CONTINUOUS LEARNING ---
+        // Trigger analysis in background to update user profile immediately
+        // We do not await this to keep UI snappy
+        import('@/lib/preference-learning').then(mod => {
+            mod.analyzeAndUpdatePreferences().catch(err => console.error("Background learning error:", err));
+        });
 
         return NextResponse.json({
             success: true,

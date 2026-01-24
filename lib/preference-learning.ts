@@ -8,24 +8,44 @@ interface PreferenceScores {
  * Analyzes user interactions and updates preferences
  * This runs periodically to learn from user behavior
  */
+/**
+ * Analyzes user interactions and updates preferences
+ * This runs periodically to learn from user behavior
+ */
 export async function analyzeAndUpdatePreferences(): Promise<void> {
     console.log('🧠 Analyzing user preferences...');
 
     try {
-        // Get all interactions
+        // Get all unique users who have interactions
+        const usersWithInteractions = await prisma.userInteraction.groupBy({
+            by: ['userId'],
+        });
+
+        for (const userGroup of usersWithInteractions) {
+            const userId = userGroup.userId;
+            await processUserPreferences(userId);
+        }
+
+    } catch (error) {
+        console.error('Error analyzing preferences:', error);
+    }
+}
+
+async function processUserPreferences(userId: string) {
+    try {
+        // Get interactions for this specific user
         const interactions = await prisma.userInteraction.findMany({
+            where: { userId },
             include: {
                 article: true,
             },
             orderBy: {
                 createdAt: 'desc',
             },
+            take: 100 // Analyze last 100 interactions for efficiency
         });
 
-        if (interactions.length < 5) {
-            console.log('⚠️  Not enough interactions to analyze (need at least 5)');
-            return;
-        }
+        if (interactions.length < 5) return;
 
         // Analyze likes only (most important signal)
         const likes = interactions.filter(i => i.interactionType === 'like');
@@ -42,26 +62,27 @@ export async function analyzeAndUpdatePreferences(): Promise<void> {
             sourceScores[source] = (sourceScores[source] || 0) + 1;
         });
 
-        // Negative signals
+        // Negative signals (Stronger penalty as requested)
         dislikes.forEach(interaction => {
             const { category, source } = interaction.article;
-            categoryScores[category] = (categoryScores[category] || 0) - 0.5;
-            sourceScores[source] = (sourceScores[source] || 0) - 0.5;
+            categoryScores[category] = (categoryScores[category] || 0) - 5; // Heavy penalty
+            sourceScores[source] = (sourceScores[source] || 0) - 5;
         });
 
-        // Get EXISTING preferences to merge with
-        let existingPreferences = await prisma.userPreferences.findFirst();
+        // Get EXISTING preferences to merge with for this user
+        let existingPreferences = await prisma.userPreferences.findUnique({
+            where: { userId }
+        });
 
         let finalCategories = categoryScores;
         let finalSources = sourceScores;
         let finalTopics = extractTopics(likes.map(i => i.article.title));
 
         if (existingPreferences) {
-            console.log('🔄 Merging with existing memory...');
             const oldCategories = JSON.parse(existingPreferences.preferredCategories) as PreferenceScores;
             const oldSources = JSON.parse(existingPreferences.preferredSources) as PreferenceScores;
 
-            // Merge logic: Decay old scores slightly (0.8) + Add new scores
+            // Merge logic: Decay old scores slightly (0.9) + Add new scores
             finalCategories = mergeScores(oldCategories, categoryScores, 0.9);
             finalSources = mergeScores(oldSources, sourceScores, 0.9);
         }
@@ -70,8 +91,9 @@ export async function analyzeAndUpdatePreferences(): Promise<void> {
         const normalizedSources = normalizeScores(finalSources);
 
         if (!existingPreferences) {
-            existingPreferences = await prisma.userPreferences.create({
+            await prisma.userPreferences.create({
                 data: {
+                    userId: userId, // Link to the user
                     preferredCategories: JSON.stringify(normalizedCategories),
                     preferredSources: JSON.stringify(normalizedSources),
                     preferredTopics: JSON.stringify(finalTopics),
@@ -81,33 +103,40 @@ export async function analyzeAndUpdatePreferences(): Promise<void> {
             });
         } else {
             await prisma.userPreferences.update({
-                where: { id: existingPreferences.id },
+                where: { userId: userId },
                 data: {
                     preferredCategories: JSON.stringify(normalizedCategories),
                     preferredSources: JSON.stringify(normalizedSources),
                     preferredTopics: JSON.stringify(finalTopics),
-                    // Keep cumulative count
                     totalInteractions: existingPreferences.totalInteractions + interactions.length,
                     lastAnalyzedAt: new Date(),
                 },
             });
         }
 
-        console.log('✅ Preferences updated (Incremental Learning):');
-        console.log('   Categories:', normalizedCategories);
-        console.log('   Sources:', normalizedSources);
-        console.log('   Topics:', finalTopics);
+        console.log(`✅ Preferences updated for user ${userId}`);
 
-    } catch (error) {
-        console.error('Error analyzing preferences:', error);
+    } catch (e) {
+        console.error(`Error processing user ${userId}:`, e);
     }
 }
 
 /**
  * Get user preferences for use in curation
  */
-export async function getUserPreferences() {
-    const preferences = await prisma.userPreferences.findFirst();
+export async function getUserPreferences(userId: string) {
+    // If no userId provided, return empty
+    if (!userId) {
+        return {
+            categories: {},
+            sources: {},
+            topics: [],
+        };
+    }
+
+    const preferences = await prisma.userPreferences.findUnique({
+        where: { userId }
+    });
 
     if (!preferences) {
         return {
@@ -123,6 +152,7 @@ export async function getUserPreferences() {
         topics: JSON.parse(preferences.preferredTopics) as string[],
     };
 }
+
 
 // --- Helper Functions ---
 

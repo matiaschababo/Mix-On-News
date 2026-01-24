@@ -196,12 +196,17 @@ export default function Home() {
     ?.filter(a => !dislikedArticles.has(a.id)) || [];
 
   // --- PERSONALIZATION ALGORITHM ---
-  // 1. Identify User Interests based on Liked Articles
+  // 1. Identify User Interests based on Liked Articles AND Dislikes
   const userInterests = new Set<string>();
+  const userDisinterests = new Set<string>();
+
   if (news?.articles) {
     news.articles.forEach(a => {
       if (likedArticles.has(a.id)) {
         userInterests.add(a.category);
+      }
+      if (dislikedArticles.has(a.id)) {
+        userDisinterests.add(a.category);
       }
     });
   }
@@ -211,12 +216,15 @@ export default function Home() {
     // Score A
     let scoreA = a.relevance;
     if (userInterests.has(a.category)) scoreA += 20; // Boost for preferred category
-    if (likedArticles.has(a.id)) scoreA -= 100; // Push already liked/read to bottom? Or keep top? Usually keep visible but maybe lower priority if "new" is better. 
-    // Actually, user wants to see what they like. Let's strictly boost unread preferred content.
+    if (userDisinterests.has(a.category)) scoreA -= 50; // Heavy penalty for disliked category
+
+    // Push already liked/read to bottom
+    if (likedArticles.has(a.id)) scoreA -= 100;
 
     // Score B
     let scoreB = b.relevance;
     if (userInterests.has(b.category)) scoreB += 20;
+    if (userDisinterests.has(b.category)) scoreB -= 50;
 
     return scoreB - scoreA; // Descending score
   });
