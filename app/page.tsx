@@ -161,14 +161,38 @@ export default function Home() {
     : news?.articles.filter(a => a.category === selectedCategory))
     ?.filter(article => !dislikedArticles.has(article.id));
 
-  const categoryColors: Record<string, string> = {
-    '🔥 Viral y Tendencias': 'bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-300 border-orange-500/50',
-    '🗣️ Debate': 'bg-red-500/20 text-red-300 border-red-500/50',
-    '🟣 Streaming & Tech': 'bg-purple-500/20 text-purple-300 border-purple-500/50',
-    '🏙️ Rosario City': 'bg-blue-500/20 text-blue-300 border-blue-500/50',
-    '📺 Showbiz': 'bg-[#FF00FF]/20 text-[#FF3AFF] border-[#FF00FF]/50',
-    '🇦🇷 Actualidad Picante': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50',
-    '⚽ Deportes': 'bg-green-500/20 text-green-300 border-green-500/50',
+  // Function to get consistent color for any category
+  const getCategoryColor = (category: string) => {
+    const safeCat = category || 'General';
+    // Dictionary of fixed colors for common categories
+    const fixedColors: Record<string, string> = {
+      'Política': 'bg-red-500/20 text-red-300 border-red-500/50',
+      'Economía': 'bg-green-500/20 text-green-300 border-green-500/50',
+      'Deportes': 'bg-blue-500/20 text-blue-300 border-blue-500/50',
+      'Espectáculos': 'bg-pink-500/20 text-pink-300 border-pink-500/50',
+      'Tecnología': 'bg-purple-500/20 text-purple-300 border-purple-500/50',
+      'Sociedad': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50',
+      'Policiales': 'bg-orange-900/30 text-orange-300 border-orange-500/50',
+      'General': 'bg-gray-700/30 text-gray-300 border-gray-500/50',
+    };
+
+    if (fixedColors[safeCat]) return fixedColors[safeCat];
+
+    // Dynamic color for unknown categories (hash string to select a color)
+    const colors = [
+      'bg-indigo-500/20 text-indigo-300 border-indigo-500/50',
+      'bg-teal-500/20 text-teal-300 border-teal-500/50',
+      'bg-cyan-500/20 text-cyan-300 border-cyan-500/50',
+      'bg-emerald-500/20 text-emerald-300 border-emerald-500/50',
+      'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/50',
+    ];
+
+    let hash = 0;
+    for (let i = 0; i < safeCat.length; i++) {
+      hash = safeCat.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   };
 
   return (
@@ -349,8 +373,7 @@ export default function Home() {
                                   rounded-xl p-6 h-full card-hover">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${categoryColors[article.category] || 'bg-gray-500/20 text-gray-300 border-gray-500/50'
-                      }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getCategoryColor(article.category)}`}>
                       {article.category}
                     </span>
 
