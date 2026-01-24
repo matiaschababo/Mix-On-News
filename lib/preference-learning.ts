@@ -96,7 +96,7 @@ export async function analyzeAndUpdatePreferences(): Promise<void> {
         console.log('✅ Preferences updated (Incremental Learning):');
         console.log('   Categories:', normalizedCategories);
         console.log('   Sources:', normalizedSources);
-        console.log('   Topics:', topics);
+        console.log('   Topics:', finalTopics);
 
     } catch (error) {
         console.error('Error analyzing preferences:', error);
