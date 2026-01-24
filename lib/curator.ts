@@ -124,10 +124,17 @@ Formato de respuesta (SOLO JSON):
         const curatedArticles: CuratedArticle[] = articles.map((article, index) => {
             const aiResult = aiResults.find((r: any) => r.id === index);
 
+            // PRIORIDAD: Usar la categoría original del medio si existe
+            let category = article.category || aiResult?.category || 'General';
+
+            // Limpieza básica de categorías
+            if (['Sociedad', 'Informacion General', 'Ciudad'].includes(category)) category = 'Actualidad';
+            if (['Politica', 'Economia'].includes(category)) category = 'Política y Economía';
+
             return {
                 ...article,
-                category: aiResult?.category || 'Descartado',
-                relevance: aiResult?.relevance || 0,
+                category,
+                relevance: aiResult?.relevance || 50,
                 aiReasoning: aiResult?.reasoning,
             };
         });

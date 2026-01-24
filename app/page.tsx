@@ -273,7 +273,8 @@ export default function Home() {
                     setRefreshing(true);
                     try {
                       await fetch('/api/admin/reset', { method: 'POST' });
-                      await handleRefresh(); // Auto-refill after reset
+                      // Don't auto-refresh, user wants it empty
+                      window.location.reload();
                     } catch (e) {
                       console.error(e);
                     } finally {
