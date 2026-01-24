@@ -30,42 +30,12 @@ export async function curateArticles(articles: ScrapedArticle[]): Promise<Curate
         }));
     }
 
-    // Get user preferences for personalized curation
-    const { getUserPreferences } = await import('./preference-learning');
-    const userPrefs = await getUserPreferences();
-    const hasPreferences = Object.keys(userPrefs.categories).length > 0;
-
-    if (hasPreferences) {
-        console.log(`🎯 AI analyzing ${articles.length} articles with YOUR preferences...`);
-        console.log(`   Favorite categories:`, Object.keys(userPrefs.categories).slice(0, 3));
-    } else {
-        console.log(`🧠 AI analyzing ${articles.length} articles for Mix On...`);
-    }
+    console.log(`🧠 AI analyzing ${articles.length} articles for Mix On...`);
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
-    // Build personalized context if preferences exist
-    let userContext = '';
-    if (hasPreferences) {
-        const topCategories = Object.entries(userPrefs.categories)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([cat, score]) => `${cat} (${Math.round(score * 100)}%)`);
-
-        const topSources = Object.entries(userPrefs.sources)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([src]) => src);
-
-        userContext = `
-
-🎯 PREFERENCIAS DEL USUARIO (priorizar esto):
-- Le ENCANTAN estas categorías: ${topCategories.join(', ')}
-- Prefiere fuentes: ${topSources.join(', ')}
-- Temas de interés: ${userPrefs.topics.slice(0, 5).join(', ')}
-
-⚠️ IMPORTANTE: Dale +15-25 puntos EXTRA a artículos que coincidan con estas preferencias.`;
-    }
+    // Global context for Mix On
+    const userContext = '';
 
     const prompt = `Eres el productor de "Mix On", un canal de streaming rosarino para audiencia de 15-40 años.
 
