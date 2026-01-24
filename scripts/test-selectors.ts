@@ -1,46 +1,35 @@
+import Parser from 'rss-parser';
 
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+const parser = new Parser({
+    headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    }
+});
 
-async function testSelectors() {
-    console.log('🧪 Testing Infobae selectors...');
+async function testFeeds() {
+    console.log('📡 Testing Infobae RSS...');
     try {
-        const { data } = await axios.get('https://www.infobae.com/', {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
-        });
-        const $ = cheerio.load(data);
-        const links = $('a[href*="/2025/"], a[href*="/2024/"]').length; // Infobae urls usually contain date
-        const articles = $('article').length;
-        console.log(`   Found ${articles} articles and ${links} potentially relevant links.`);
-
-        $('article').slice(0, 3).each((i, el) => {
-            const title = $(el).find('h2, h3').text().trim();
-            const link = $(el).find('a').attr('href');
-            console.log(`   [${i}] ${title} -> ${link}`);
-        });
-
+        const feed = await parser.parseURL('https://www.infobae.com/feeds/rss/');
+        console.log(`   ✅ Found ${feed.items.length} items.`);
+        if (feed.items.length > 0) {
+            console.log(`   Example: ${feed.items[0].title}`);
+            console.log(`   Link: ${feed.items[0].link}`);
+        }
     } catch (e: any) {
-        console.error('   Failed:', e.message);
+        console.error('   ❌ Failed Infobae:', e.message);
     }
 
-    console.log('\n🧪 Testing Pagina 12 selectors...');
+    console.log('\n📡 Testing Pagina 12 RSS...');
     try {
-        const { data } = await axios.get('https://www.pagina12.com.ar/', {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
-        });
-        const $ = cheerio.load(data);
-        const articles = $('article').length;
-        console.log(`   Found ${articles} articles.`);
-
-        $('article').slice(0, 3).each((i, el) => {
-            const title = $(el).find('h2, h3, .title, .article-title').text().trim();
-            const link = $(el).find('a').attr('href');
-            console.log(`   [${i}] ${title} -> ${link}`);
-        });
-
+        const feed = await parser.parseURL('https://www.pagina12.com.ar/rss/portada.xml');
+        console.log(`   ✅ Found ${feed.items.length} items.`);
+        if (feed.items.length > 0) {
+            console.log(`   Example: ${feed.items[0].title}`);
+            console.log(`   Link: ${feed.items[0].link}`);
+        }
     } catch (e: any) {
-        console.error('   Failed:', e.message);
+        console.error('   ❌ Failed Pagina 12:', e.message);
     }
 }
 
-testSelectors();
+testFeeds();
