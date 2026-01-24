@@ -16,45 +16,55 @@ export interface ScrapedArticle {
 /**
  * Scrapes Infobae homepage for latest news
  */
+/**
+ * Scrapes Infobae homepage for latest news
+ */
 async function scrapeInfobae(): Promise<ScrapedArticle[]> {
   try {
     const { data } = await axios.get('https://www.infobae.com/', {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
       },
     });
     const $ = cheerio.load(data);
     const articles: ScrapedArticle[] = [];
 
-    // Infobae uses <article> tags with headlines in <h2> or <h3>
-    $('article').slice(0, 20).each((_, elem) => {
-      const $article = $(elem);
-      const linkElem = $article.find('a').first();
-      const titleElem = $article.find('h2, h3').first();
-      // Try to find category tag
-      const categoryElem = $article.find('.dne-deck, .card-deck, .deck').first();
-
+    // More generic selector for Infobae
+    $('a[href*="/2024/"], a[href*="/2025/"]').slice(0, 30).each((_, elem) => {
+      const linkElem = $(elem);
       const url = linkElem.attr('href');
-      const title = titleElem.text().trim();
-      let category = categoryElem.text().trim();
 
-      if (url && title && url.startsWith('http')) {
-        // Fallback: extract from URL (e.g. infobae.com/economia/...)
-        if (!category) {
-          const match = url.match(/infobae\.com\/([^/]+)\//);
-          if (match) category = match[1];
+      // Try to find title inside the link or in parent
+      let title = linkElem.text().trim();
+      if (!title || title.length < 15) {
+        title = linkElem.find('h2, h3').text().trim();
+      }
+
+      // Category fallback from URL
+      let category = '';
+      if (url && url.includes('/')) {
+        const parts = url.split('/').filter(p => p.length > 0);
+        // infobae.com/economia/2024/... -> economia is index 1 (after domain)
+        if (parts.length > 1 && !['2024', '2025', 'new-resizer'].includes(parts[1])) {
+          category = parts[1];
         }
+      }
 
-        articles.push({
-          url,
-          title,
-          source: 'Infobae',
-          category: category ? capitalize(category) : undefined
-        });
+      if (url && title && title.length > 20 && url.startsWith('http')) {
+        // Avoid duplicates
+        if (!articles.some(a => a.url === url)) {
+          articles.push({
+            url,
+            title,
+            source: 'Infobae',
+            category: category ? capitalize(category) : undefined
+          });
+        }
       }
     });
 
-    return articles;
+    return articles.slice(0, 15);
   } catch (error) {
     console.error('Error scraping Infobae:', error);
     return [];
@@ -74,44 +84,44 @@ async function scrapePagina12(): Promise<ScrapedArticle[]> {
     const $ = cheerio.load(data);
     const articles: ScrapedArticle[] = [];
 
-    $('article').slice(0, 20).each((_, elem) => {
+    // Pagina 12 generic selector
+    $('.article-box, article').slice(0, 25).each((_, elem) => {
       const $article = $(elem);
       const linkElem = $article.find('a').first();
-      const titleElem = $article.find('h2, h3, .article-title').first();
-      const categoryElem = $article.find('.tag, .suplemento').first();
+      const titleElem = $article.find('h2, h3, .title').first();
 
       let url = linkElem.attr('href');
-      const title = titleElem.text().trim();
-      let category = categoryElem.text().trim();
+      let title = titleElem.text().trim();
 
-      if (url && title) {
+      // Fallback title
+      if (!title) title = linkElem.text().trim();
+
+      if (url && title && title.length > 15) {
         if (!url.startsWith('http')) {
           url = `https://www.pagina12.com.ar${url}`;
         }
 
-        // Fallback: extract from URL
-        if (!category) {
-          // pagina12.com.ar/secciones/el-pais/nota -> el-pais
-          // pagina12.com.ar/500-titulo -> nada
-          if (url.includes('/secciones/')) {
-            const match = url.match(/\/secciones\/([^/]+)/);
-            if (match) category = match[1].replace(/-/g, ' ');
-          } else if (url.includes('/suplementos/')) {
-            const match = url.match(/\/suplementos\/([^/]+)/);
-            if (match) category = match[1].replace(/-/g, ' ');
-          }
+        let category = '';
+        if (url.includes('/secciones/')) {
+          const match = url.match(/\/secciones\/([^/]+)/);
+          if (match) category = match[1].replace(/-/g, ' ');
+        } else if (url.includes('/suplementos/')) {
+          const match = url.match(/\/suplementos\/([^/]+)/);
+          if (match) category = match[1].replace(/-/g, ' ');
         }
 
-        articles.push({
-          url,
-          title,
-          source: 'Página 12',
-          category: category ? capitalize(category) : undefined
-        });
+        if (!articles.some(a => a.url === url)) {
+          articles.push({
+            url,
+            title,
+            source: 'Página 12',
+            category: category ? capitalize(category) : undefined
+          });
+        }
       }
     });
 
-    return articles;
+    return articles.slice(0, 15);
   } catch (error) {
     console.error('Error scraping Página 12:', error);
     return [];
