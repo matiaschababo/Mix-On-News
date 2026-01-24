@@ -10,63 +10,48 @@ export interface ScrapedArticle {
   publishedAt?: Date;
 }
 
+import Parser from 'rss-parser';
+
+const parser = new Parser();
+
 /**
- * Scrapes Infobae homepage for latest news
- */
-/**
- * Scrapes Infobae homepage for latest news
- */
-/**
- * Scrapes Infobae homepage for latest news
+ * Scrapes Infobae homepage using RSS Feed for reliability
  */
 async function scrapeInfobae(): Promise<ScrapedArticle[]> {
   try {
-    const { data } = await axios.get('https://www.infobae.com/', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      },
-    });
-    const $ = cheerio.load(data);
+    const feedUrl = 'https://www.infobae.com/arc/outboundfeeds/rss/?outputType=xml';
+    const feed = await parser.parseURL(feedUrl);
     const articles: ScrapedArticle[] = [];
 
-    // More generic selector for Infobae
-    $('a[href*="/2024/"], a[href*="/2025/"]').slice(0, 30).each((_, elem) => {
-      const linkElem = $(elem);
-      const url = linkElem.attr('href');
+    feed.items.slice(0, 20).forEach((item) => {
+      const url = item.link;
+      const title = item.title;
 
-      // Try to find title inside the link or in parent
-      let title = linkElem.text().trim();
-      if (!title || title.length < 15) {
-        title = linkElem.find('h2, h3').text().trim();
-      }
-
-      // Category fallback from URL
+      // Attempt to extract category from URL
+      // https://www.infobae.com/economia/2024/... -> economia
       let category = '';
-      if (url && url.includes('/')) {
-        const parts = url.split('/').filter(p => p.length > 0);
-        // infobae.com/economia/2024/... -> economia is index 1 (after domain)
-        if (parts.length > 1 && !['2024', '2025', 'new-resizer'].includes(parts[1])) {
-          category = parts[1];
+      if (url && url.includes('infobae.com/')) {
+        const parts = url.split('infobae.com/')[1].split('/');
+        if (parts.length > 0 && !['2024', '2025', 'new-resizer'].includes(parts[0])) {
+          category = parts[0];
         }
       }
 
-      if (url && title && title.length > 20 && url.startsWith('http')) {
-        // Avoid duplicates
-        if (!articles.some(a => a.url === url)) {
-          articles.push({
-            url,
-            title,
-            source: 'Infobae',
-            category: category ? capitalize(category) : undefined
-          });
-        }
+      if (url && title && url.startsWith('http')) {
+        articles.push({
+          url,
+          title: title.trim(),
+          source: 'Infobae',
+          category: category ? capitalize(category) : undefined,
+          publishedAt: item.pubDate ? new Date(item.pubDate) : undefined,
+          summary: item.contentSnippet
+        });
       }
     });
 
     return articles.slice(0, 15);
   } catch (error) {
-    console.error('Error scraping Infobae:', error);
+    console.error('Error scraping Infobae RSS:', error);
     return [];
   }
 }
@@ -244,8 +229,12 @@ async function scrapeRosario3(): Promise<ScrapedArticle[]> {
 
     $('article, .article').slice(0, 20).each((_, elem) => {
       const $article = $(elem);
-      const linkElem = $article.find('a').first();
-      const titleElem = $article.find('h2, h3, .headline').first();
+      // Try to find the specific cover link first, or fallback to any link with a valid href
+      const linkElem = $article.find('a.cover-link').first().length
+        ? $article.find('a.cover-link').first()
+        : $article.find('a[href^="/"]').first();
+
+      const titleElem = $article.find('h2, h3, .headline, .title').first();
       const categoryElem = $article.find('.volanta, .section').first();
 
       let url = linkElem.attr('href');
