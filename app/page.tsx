@@ -185,19 +185,41 @@ export default function Home() {
   const handleReset = () => {
     setSelectedCategory('Todos');
     setSelectedSource('Todos');
-    setLikedArticles(new Set());
-    setDislikedArticles(new Set());
-    toast.success('Filtros y preferencias reiniciados');
-    // Optionally clear DB prefs via API? User said "Eliminar todo o resetear feed". 
-    // This reset acts as a local reset of filters/hidden items.
-    // If we want to wipe DB, that's a bigger action. I'll stick to UI reset for now.
+    // Do NOT clear preferences (likes/dislikes) as they allow the algorithm to learn.
+    // We only reset the visual filters.
+    toast.success('Filtros reiniciados');
   };
 
   // Base Set of Articles (excluding Pagina 12)
-  // Pre-filter Pagina 12 and user dislikes to get the "Working Set"
   const cleanArticles = news?.articles
     ?.filter(a => !normalize(a.source).includes('pagina 12'))
     ?.filter(a => !dislikedArticles.has(a.id)) || [];
+
+  // --- PERSONALIZATION ALGORITHM ---
+  // 1. Identify User Interests based on Liked Articles
+  const userInterests = new Set<string>();
+  if (news?.articles) {
+    news.articles.forEach(a => {
+      if (likedArticles.has(a.id)) {
+        userInterests.add(a.category);
+      }
+    });
+  }
+
+  // 2. Sort Articles: High Relevance + Matches User Interest -> Top
+  const personalizedFeed = [...cleanArticles].sort((a, b) => {
+    // Score A
+    let scoreA = a.relevance;
+    if (userInterests.has(a.category)) scoreA += 20; // Boost for preferred category
+    if (likedArticles.has(a.id)) scoreA -= 100; // Push already liked/read to bottom? Or keep top? Usually keep visible but maybe lower priority if "new" is better. 
+    // Actually, user wants to see what they like. Let's strictly boost unread preferred content.
+
+    // Score B
+    let scoreB = b.relevance;
+    if (userInterests.has(b.category)) scoreB += 20;
+
+    return scoreB - scoreA; // Descending score
+  });
 
   // derived state with Counts
   // Sources: Unique sources in cleanArticles
@@ -213,8 +235,8 @@ export default function Home() {
 
   // Categories: Unique categories based on CURRENT Source Selection
   const relevantArticlesForCats = selectedSource === 'Todos'
-    ? cleanArticles
-    : cleanArticles.filter(a => a.source === selectedSource);
+    ? personalizedFeed
+    : personalizedFeed.filter(a => a.source === selectedSource);
 
   const uniqueCategories = Array.from(new Set(relevantArticlesForCats.map(a => a.category)));
 
@@ -229,7 +251,7 @@ export default function Home() {
   const availableCategories = uniqueCategories;
 
   // Final Filter
-  const filteredArticles = cleanArticles
+  const filteredArticles = personalizedFeed
     ?.filter(article => selectedSource === 'Todos' || article.source === selectedSource)
     ?.filter(article => selectedCategory === 'Todos' || article.category === selectedCategory);
 
