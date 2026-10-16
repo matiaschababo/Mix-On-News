@@ -24,6 +24,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
   * `PF`: `11:00`, `14:00`, `17:00`, `20:00` hs ART
   * `GP`: `12:00`, `15:00`, `18:00`, `21:00` hs ART
   * `GTA`: `14:30`, `17:30`, `20:30`, `22:30` hs ART (va a las `:30` para no pisar el feed colab `@mixontv_`)
-- **TikTok:** Mismos 16 turnos diarios de Instagram/Facebook.
+- **TikTok (Cuentas por Show y Canal Matriz):**
+  * **Cuentas por Show:** Mismos 16 turnos diarios de Instagram/Facebook (4 por show).
+  * **Canal Matriz (`@mixontv_` — 4 clips diarios desincronizados):** `11:00` FDF, `13:00` GP, `17:00` GTA, `21:00` PF (1 clip por show al día, sin colisión con el programa que emite a esa hora en su cuenta).
 - **X / Twitter (`@Mixontv_`):** 1 clip por hora de 09:00 a 23:00 hs (15 turnos diarios), sincronizado con el clip de Meta/TikTok de esa hora, cubriendo extremos y huecos con archivo. Copy máx 280 caracteres (si supera, borrar sufijo).
+
+# Ingesta Dinámica y Desplazamiento en Cascada (Ripple Shift)
+- A medida que ingresan clips nuevos de actualidad o tendencias, entran en el turno más próximo disponible ("más recientes primero") y desplazan los clips de archivo hacia adelante.
+- Ventana de congelamiento (*Freeze Window*): no se modifican slots programados dentro de las próximas 3 horas. Las urgencias rompen el congelamiento y salen al instante.
 
