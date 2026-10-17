@@ -28,6 +28,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
   * **Cuentas por Show:** Mismos 16 turnos diarios de Instagram/Facebook (4 por show).
   * **Canal Matriz (`@mixontv_` — 4 clips diarios desincronizados):** `11:00` FDF, `13:00` GP, `17:00` GTA, `21:00` PF (1 clip por show al día, sin colisión con el programa que emite a esa hora en su cuenta).
 - **X / Twitter (`@Mixontv_`):** 1 clip por hora de 09:00 a 23:00 hs (15 turnos diarios), sincronizado con el clip de Meta/TikTok de esa hora, cubriendo extremos y huecos con archivo. Copy máx 280 caracteres (si supera, borrar sufijo).
+- **Mix On Sports (`SPORTS` / `MOS` — Días de Partido de Rosario Central y Newell's Old Boys):**
+  * Transmisiones en vivo los días de partido: 1 hora antes (previa), durante el partido y 1 hora post-partido (análisis y polémicas).
+  * Durante esas horas y partidos se generan y suben clips en tiempo real a Instagram (`@mixonsports` con colab `@mixontv_`), TikTok (`@mixonsports` vía Buffer Cuenta 3), YouTube Shorts (`@Mixontv_`) y X (`@Mixontv_`).
 
 # Ingesta Dinámica y Desplazamiento en Cascada (Ripple Shift)
 - A medida que ingresan clips nuevos de actualidad o tendencias, entran en el turno más próximo disponible ("más recientes primero") y desplazan los clips de archivo hacia adelante.
