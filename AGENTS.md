@@ -31,6 +31,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Mix On Sports (`SPORTS` / `MOS` — Días de Partido de Rosario Central y Newell's Old Boys):**
   * Transmisiones en vivo los días de partido: 1 hora antes (previa), durante el partido y 1 hora post-partido (análisis y polémicas).
   * Durante esas horas y partidos se generan y suben clips en tiempo real a Instagram (`@mixonsports` con colab `@mixontv_`), TikTok (`@mixonsports` vía Buffer Cuenta 3), YouTube Shorts (`@Mixontv_`) y X (`@Mixontv_`).
+  * ❌ **PROHIBICIÓN ESTRICTA DE PRE-PROGRAMACIÓN EN COLAS DE ARCHIVO:** Los clips de `SPORTS` / `MOS` son reacciones inmediatas a partidos en vivo y análisis perecedero. **JAMÁS se deben pre-programar en colas diarias ni en la grilla regular de archivo (YouTube Shorts, Matriz Facebook o Matriz TikTok)**. Todo script o bot que gestione colas o seleccione stock debe excluir categóricamente los clips de `SPORTS` / `MOS`.
 
 # Ingesta Dinámica y Desplazamiento en Cascada (Ripple Shift)
 - A medida que ingresan clips nuevos de actualidad o tendencias, entran en el turno más próximo disponible ("más recientes primero") y desplazan los clips de archivo hacia adelante.
