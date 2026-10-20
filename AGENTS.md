@@ -1,3 +1,27 @@
+# MÉTRICAS OFICIALES CONSOLIDADAS DEL ECOSISTEMA (AUDITORÍA OCTUBRE 2026 - REGLA VINCULANTE)
+Todo bot, modelo o agente que opere en este workspace debe tomar como **ÚNICA VERDAD ESTADÍSTICA OFICIAL** los siguientes números consolidados de la auditoría final de Octubre 2026 (Fuente canónica: `mixon-metrics-hub/docs/reportes/N3_Master_Executive_Report_MixOn_V4.md`):
+
+* **Visualizaciones Brutas Totales:** **83.852.281 reproducciones** consolidadas (Marzo – Octubre 2026).
+  - **Instagram (`@mixontv_` + cuentas de show):** **61.280.900** (73,1%) | 46.2M de alcance.
+  - **TikTok (`@mixontv_` + cuentas de show):** **16.800.890** (20,0%) | 22.1M de impresiones.
+  - **Facebook (Páginas oficiales + Watch):** **5.029.308** (6,0%) | 6.8M de impresiones.
+  - **YouTube (`@mixontv_`):** **741.183** (0,9%) | 4.938.064 impresiones | **40.539,1 horas de consumo**.
+* **Impactos Totales Consolidados:** **80.038.064 impresiones / alcance**.
+* **Comunidad Digital Total:** **+182.200 seguidores** acumulados.
+* **Earned Media Value (EAV):** **>$150.000 USD** de pauta publicitaria orgánica equivalente.
+* **Métricas Consolidadas por Show:**
+  - **Prendido Fuego (PF):** **20,70M visualizaciones** (20.702.435) | Hook Rate récord 74.1%.
+  - **Fuera de Foco (FDF):** **10,42M visualizaciones** (10.420.449) | **16.871,3 horas en YouTube** (41,6% del canal).
+  - **Giro Perfecto (GP):** **10,31M visualizaciones** (10.312.358) | **14.579,6 horas en YouTube** | RPM $1,37 USD.
+  - **Gracias Te Aviso (GTA):** **1,11M visualizaciones** (1.111.458) | Engagement Rate récord (11.33% IG, 6.16% TikTok).
+  - **Hoy Hay Que Ganar (HHQG - Archivo):** **8,51M visualizaciones** (8.508.138).
+  - **Mix On Sports (MOS):** **399K visualizaciones** | 3.568 espectadores promedio en transmisiones de partido.
+  - **Matriz Mix On (`@mixontv_`):** **32,39M impactos directos**.
+
+❌ **PROHIBICIÓN ESTRICTA DE NÚMEROS ZOMBIE (CORTE VIEJO DE JULIO):**
+Queda TERMINANTEMENTE PROHIBIDO afirmar que Mix On tiene "40 millones", "42 millones" o "17.400 horas". Esos datos pertenecían al corte preliminar de julio 2026. Todo reporte, análisis, cálculo o deep research debe utilizar obligatoriamente las cifras auditadas de Octubre 2026 (83.85M vistas y 40.539 horas).
+
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
