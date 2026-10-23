@@ -82,3 +82,25 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Desbloqueo Anti-Colisión Multi-Clip en Scheduler:** `meta_queue_scheduler.py` evalúa la emisión por par `seen_prog_plats[prog].add(platform)`, permitiendo el despacho paralelo de clips complementarios sin falsos bloqueos.
 - **Política de Faltante de Stock por Red:** Si no hay stock virgen de un programa para una red particular, **no pasa nada: NO se sube en esa red**. El turno se aprovecha siempre y cuando exista stock virgen para esa plataforma. Queda terminantemente prohibido duplicar o forzar re-subidas.
 
+
+
+# Blindaje Obligatorio de Copy por Plataforma (`lib/programs.ts` / `config.py`)
+- **YouTube Shorts (`@Mixontv_`):** Va **SOLO el título limpio** (`{TITULO}`), sin sufijo `| PROGRAMA...` ni `#Shorts`.
+- **Instagram Reels, Facebook Reels y TikTok (`getFormattedTitle`):**
+  * ❌ **PROHIBIDO** incluir hashtags (`#`) o enlaces de YouTube en Meta Reels o TikTok.
+  * **Fuera de Foco (`FDF` — desde el 19/10/2026 en adelante):** `{TITULO} | FUERA DE FOCO Lunes a Viernes de 11 a 13 hs con Fran Metz, Nahuel Cantero y Toti Or`
+  * **Fuera de Foco (`FDF` — archivo histórico antes del 19/10/2026):** `{TITULO} | FUERA DE FOCO 📸 Lunes a Viernes de 11 a 13 hs CON FRAN METZ, DIANE CARACCHI Y FACU COLMAN`
+  * **Gracias Te Aviso (`GTA`):** `{TITULO} | GRACIAS TE AVISO Lunes a Viernes de 13 a 15 hs con Tici Saraceni, Agus Wuipi y Georgi Serafini`
+  * **Prendido Fuego (`PF`):** `{TITULO} | PRENDIDO FUEGO por Mix On de Lunes y Miércoles de 15 a 17 hs con Tomas Holder, Diane Caracchi y Luli Case Rossi`
+  * **Giro Perfecto (`GP`):** `{TITULO} | GIRO PERFECTO Lunes a Viernes de 17 a 19 hs CON Pato Filippini, Matias Villagra y Joaquín Enecoiz`
+  * **Mix On Sports (`SPORTS` / `MOS`):** `{TITULO} | MIX ON SPORTS`
+- **X / Twitter (`getFormattedXPost` / `format_x_clip_post`):** Formato conversacional limpio sin links salientes a YouTube.
+
+# Colaboradores Co-autores Oficiales en Instagram Reels (Handles Exactos)
+- **Fuera de Foco (`FDF` — desde el 19/10/2026 en adelante):** `['mixontv_', 'franmetzz', 'nahu.cantero']` *(❌ PROHIBIDO dianecaracchi)*.
+- **Fuera de Foco (`FDF` — archivo histórico antes del 19/10/2026):** `['mixontv_', 'franmetzz', 'dianecaracchi']`.
+- **Default del Sistema:** Todo clip de FDF sin metadata o sin fecha explícita es CONTEMPORÁNEO (`nahu.cantero`).
+- **Prendido Fuego (`PF`):** `['mixontv_', 'tomasholder_', 'dianecaracchi', 'luliicaserossi']`.
+- **Gracias Te Aviso (`GTA`):** `['mixontv_', 'ticisaraceni', 'georgiserafini', 'agustinawuipi']`.
+- **Giro Perfecto (`GP`):** `['mixontv_', 'patofilippini', 'mativillagra', 'joaquinenecoiz']`.
+- **Mix On Sports (`SPORTS` / `MOS`):** `['mixontv_', 'gabrielluispennise', 'juliandmartin']`.
