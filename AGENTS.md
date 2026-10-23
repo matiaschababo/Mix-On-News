@@ -61,6 +61,19 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - A medida que ingresan clips nuevos de actualidad o tendencias, entran en el turno más próximo disponible ("más recientes primero") y desplazan los clips de archivo hacia adelante.
 - Ventana de congelamiento (*Freeze Window*): no se modifican slots programados dentro de las próximas 3 horas. Las urgencias rompen el congelamiento y salen al instante.
 
+# Protocolo Maestro de Rescate en Ventanas Libres y Espaciado Anti-Canibalización (Rescue Window Spacing)
+- **Regla Inquebrantable Anti-Canibalización (Mínimo 75-90 min entre publicaciones del mismo show):**
+  * Dos clips de la **misma cuenta de programa** (ej. `@fueradefoco.mixon`) **JAMÁS deben publicarse con menos de 75 a 90 minutos de diferencia**, para no dividir el algoritmo ni destruir el alcance orgánico del clip anterior.
+  * El guardián `RateLimitGuard` (`DEFAULT_MIN_COOLDOWN_MINUTES = 75`, `MAX_CLIPS_PER_ROLLING_HOUR = 1`) bloquea por sistema cualquier intento de emisión consecutiva que viole este intervalo.
+- **Prohibición de Disparo Ciego en Caliente cerca de Turnos Oficiales:**
+  * Si un clip se retrasa, falla o se rescata a destiempo y faltan **menos de 90 minutos para el siguiente turno oficial del mismo show**, **QUEDA TERMINANTEMENTE PROHIBIDO dispararlo de inmediato**.
+- **Reubicación Inteligente Automática en Ventanas Libres (`resolve_automatic_rescue_slot`):**
+  * Todo clip rescatado o pendiente debe reubicarse automáticamente en la **próxima ventana libre del día** donde el programa no tenga actividad programada:
+    - **Fuera de Foco (FDF):** Ventana nocturna a las `21:00` hs (o `20:30` / `21:30` hs), tras concluir su jornada regular a las 19:00 hs (2 horas completas de respiro).
+    - **Prendido Fuego (PF):** Ventana nocturna a las `21:30` hs o `22:00` hs (después de las 20:00 hs).
+    - **Giro Perfecto (GP):** Ventana nocturna a las `22:30` hs o `23:00` hs (después de las 21:00 hs).
+    - **Gracias Te Aviso (GTA):** Ventana intermedia a las `19:00` hs (entre 17:30 y 20:30 hs) o `21:30` hs.
+
 # Prohibición Absoluta de Contenido Duplicado y Gestión de Stock por Plataforma
 - **Regla Anti-Duplicados Estricta:** Un clip que ya fue publicado o programado en una cuenta o red social, **JAMÁS puede volver a publicarse en esa misma plataforma ni repetirse entre cuentas distintas de la misma red** (ej: no duplicar entre la cuenta de show y la cuenta matriz de TikTok). Cada turno debe ser un clip 100% virgen para esa red.
 - **Stock Independiente por Plataforma:** Cada red tiene un stock disponible distinto según el historial del Content Manager. El stock de YouTube Shorts es independiente del de TikTok o Meta.
