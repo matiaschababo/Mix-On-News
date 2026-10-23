@@ -42,7 +42,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - NO mezclar con archivos de `clips-manager` ni con la carpeta raíz de Google Drive `Mix On`.
 
 # Grilla Oficial de Publicación por Red Social y Programa (Schedule Binding)
-- **YouTube Shorts (`@Mixontv_`):** De 09:00 a 23:00 hs ART (15 slots por hora en punto: `SLOT_9` a `SLOT_23`, 1 por hora fija).
+- **YouTube Shorts (`@Mixontv_`):** 5 turnos diarios espaciados cada 3 a 4 horas: **`10:00`, `13:00`, `17:00`, `20:00` y `23:00` hs ART** (`SLOT_10`, `SLOT_13`, `SLOT_17`, `SLOT_20`, `SLOT_23`) con `notifySubscribers=False`, rotación de programas y anti-colisión temática por día.
 - **Instagram Reels y Facebook Reels (4 clips por programa al día):**
   * `FDF`: `10:00`, `13:00`, `16:00`, `19:00` hs ART
   * `PF`: `11:00`, `14:00`, `17:00`, `20:00` hs ART
@@ -51,7 +51,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **TikTok (Cuentas por Show y Canal Matriz):**
   * **Cuentas por Show:** Mismos 16 turnos diarios de Instagram/Facebook (4 por show).
   * **Canal Matriz (`@mixontv_` — 4 clips diarios desincronizados):** `11:00` FDF, `13:00` GP, `17:00` GTA, `21:00` PF (1 clip por show al día, sin colisión con el programa que emite a esa hora en su cuenta).
-- **X / Twitter (`@Mixontv_`):** 1 clip por hora de 09:00 a 23:00 hs (15 turnos diarios), sincronizado con el clip de Meta/TikTok de esa hora, cubriendo extremos y huecos con archivo. Copy máx 280 caracteres (si supera, borrar sufijo).
+- **X / Twitter (`@Mixontv_`):** 5 turnos diarios espaciados cada 3 a 4 horas: **`10:00`, `13:00`, `17:00`, `20:00` y `23:00` hs ART** (`SLOT_10`, `SLOT_13`, `SLOT_17`, `SLOT_20`, `SLOT_23`), sincronizados 1-a-1 con YouTube Shorts (`10:00` FDF, `13:00` MIXON/GP, `17:00` PF, `20:00` PF, `23:00` X_ONLY priorizando GTA/GP) para proteger Tweepcred y evitar el decay de AuthorDiversityScorer. Ráfaga libre para Mix On Sports (MOS) en vivo y urgencias. Copy nativo conversacional de debate sin links externos ni sufijos de horarios.
 - **Mix On Sports (`SPORTS` / `MOS` — Días de Partido de Rosario Central y Newell's Old Boys):**
   * Transmisiones en vivo los días de partido: 1 hora antes (previa), durante el partido y 1 hora post-partido (análisis y polémicas).
   * Durante esas horas y partidos se generan y suben clips en tiempo real a Instagram (`@mixonsports` con colab `@mixontv_`), TikTok (`@mixonsports` vía Buffer Cuenta 3), YouTube Shorts (`@Mixontv_`) y X (`@Mixontv_`).
