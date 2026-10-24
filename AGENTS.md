@@ -65,7 +65,21 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Principio Inviolable de Cobertura Total (No Perder Turnos Jamás):** Bajo ninguna circunstancia se puede perder un turno diario de un programa. Cada show debe completar rigurosamente sus 4 turnos oficiales diarios (16 turnos diarios de shows + slots de Shorts/Matriz). Si un clip se retrasa, falla momentáneamente en Telegram o debe reubicarse por cooldown anti-canibalización, el sistema **TIENE la obligación de aprovechar en primera instancia los turnos oficiales restantes del mismo día que estén vacíos o sin contenido virgen asignado**.
 - **Prohibición de Postergación Prematura a Mañana:** Queda TERMINANTEMENTE PROHIBIDO postergar un clip al día siguiente si hoy todavía queda un turno oficial del programa sin cubrir y existe margen de respiro temporal (mínimo 75 minutos desde la última emisión real). Por ejemplo, si el clip de las 20:30 hs de GTA se demora o no salió a tiempo, debe reubicarse automáticamente para cubrir el turno oficial de las 22:30 hs de hoy, garantizando que el show no cierre el día con 3 clips en lugar de 4.
 
-# Protocolo Maestro de Rescate en Ventanas Libres y Espaciado Anti-Canibalización (Rescue Window Spacing)
+# Hilo Conductor Cronológico (FIFO Obligatorio por Live)
+- **Regla Inquebrantable de Narrativa por Live:** Cuando existen múltiples clips que provienen de la **misma fecha de emisión o programa en vivo** (ej: `clip01`, `clip02`, `clip03`, `clip06`, `clip08` de FDF del 23/10):
+  * **Los clips del mismo live DEBEN emitirse en riguroso orden cronológico correlativo** (inicio -> desarrollo -> remate).
+  * Queda estrictamente prohibido alterar el orden de los capítulos de un mismo programa (ej: publicar la parte 2 o el remate antes de la parte 1).
+  * Si un clip de un live pierde su turno matutino, **toma de inmediato el próximo turno oficial del mismo show** y desplaza los clips siguientes de ese live hacia adelante (Cascada Inmediata).
+
+# Fuente Única de la Verdad para Copys, Títulos y Redes (Prohibición Expresa de Nombres de Archivo - Caso #85)
+- **Principio Canónico:** Todo título, gancho, copy, pie de publicación o texto de red social **DEBE provenir exclusivamente del Content Manager (`Clip.title` en Supabase)**.
+- ❌ **TERMINANTEMENTE PROHIBIDO:** Deducir, limpiar o construir el título de un clip a partir del nombre de archivo (`.mp4`), metadatos de Telegram o expresiones regulares en el uploader. Ese error ya causó desastres históricos (Caso #85). Si un clip no tiene título en la base de datos o en la cola, el bot no puede inventarlo.
+
+# Protocolo Maestro de Rescate: Cascada Inmediata y Ventana Intermedia (Prohibición de Postergación a la Noche)
+- **Prohibición de Patear al Fondo de la Noche:** Si un clip pierde su turno matutino (ej: 10:00 o 11:00 hs), **QUEDA TERMINANTEMENTE PROHIBIDO postergarlo automáticamente hasta las 21:00 o 22:30 hs** si el show aún tiene turnos oficiales por delante ese mismo día.
+- **Mecanismos Oficiales de Recuperación:**
+  1. **Opción A (Cascada Inmediata al Próximo Turno Oficial - Ripple Shift de Show):** El clip rezagado toma el turno oficial inmediatamente siguiente del show (ej: si cayó a las 10:00 hs, sale en el slot de las 13:00 hs), empujando el clip de las 13:00 a las 16:00 hs, el de las 16:00 a las 19:00 hs, y el último de la fila pasa a ocupar la ventana nocturna de cierre (21:00 hs). Se preserva la secuencia cronológica y ningún turno queda vacío.
+  2. **Opción B (Ventana Intermedia a Mitad de Camino):** Como los turnos regulares de un programa están distanciados por 3 horas (ej: 10:00 a 13:00, o 11:00 a 14:00), si existe respiro temporal (+90 minutos desde la emisión anterior y >75 minutos antes del próximo turno), el clip puede emitirse en una **ventana intermedia** (ej: 11:30 hs o 12:30 hs) sin alterar el resto de la grilla.
 - **Regla Inquebrantable Anti-Canibalización (Mínimo 75-90 min entre publicaciones del mismo show):**
   * Dos clips de la **misma cuenta de programa** (ej. `@fueradefoco.mixon`) **JAMÁS deben publicarse con menos de 75 a 90 minutos de diferencia**, para no dividir el algoritmo ni destruir el alcance orgánico del clip anterior.
   * El guardián `RateLimitGuard` (`DEFAULT_MIN_COOLDOWN_MINUTES = 75`, `MAX_CLIPS_PER_ROLLING_HOUR = 1`) bloquea por sistema cualquier intento de emisión consecutiva que viole este intervalo.
