@@ -97,9 +97,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **X / Twitter (`getFormattedXPost` / `format_x_clip_post`):** Formato conversacional limpio sin links salientes a YouTube.
 
 # Colaboradores Co-autores Oficiales en Instagram Reels (Handles Exactos)
-- **Fuera de Foco (`FDF` — desde el 19/10/2026 en adelante):** `['mixontv_', 'franmetzz', 'nahu.cantero']` *(❌ PROHIBIDO dianecaracchi)*.
-- **Fuera de Foco (`FDF` — archivo histórico antes del 19/10/2026):** `['mixontv_', 'franmetzz', 'dianecaracchi']`.
-- **Default del Sistema:** Todo clip de FDF sin metadata o sin fecha explícita es CONTEMPORÁNEO (`nahu.cantero`).
+- **Fuera de Foco (`FDF`):**
+  * Clips anotados/grabados desde el 23/10/2026 en adelante: `['mixontv_', 'franmetzz', 'nahu.cantero', 'toti_or']` *(con `@toti_or`)*.
+  * Clips anotados/grabados entre el 19/10/2026 y 22/10/2026: `['mixontv_', 'franmetzz', 'nahu.cantero']`.
+  * Clips de archivo históricos anteriores al 19/10/2026: `['mixontv_', 'franmetzz', 'dianecaracchi']`.
+  * Determinación de Fecha: La era se determina por fecha real en Supabase (`Episode.airDate` o `Clip.createdAt`), no por la fecha de programación en la cola.
 - **Prendido Fuego (`PF`):** `['mixontv_', 'tomasholder_', 'dianecaracchi', 'luliicaserossi']`.
 - **Gracias Te Aviso (`GTA`):** `['mixontv_', 'ticisaraceni', 'georgiserafini', 'agustinawuipi']`.
 - **Giro Perfecto (`GP`):** `['mixontv_', 'patofilippini', 'mativillagra', 'joaquinenecoiz']`.
