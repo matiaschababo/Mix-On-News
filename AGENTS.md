@@ -88,7 +88,34 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 
 
-# Blindaje Obligatorio de Copy por Plataforma (`lib/programs.ts` / `config.py`)
+# Protocolo de Reportes Telegram Centrados en el Clip (Clip-Centric Reporting)
+- **El Producto es el Clip:** Todo reporte de publicación o alerta emitida hacia Telegram debe estructurarse desde la perspectiva del **clip como protagonista**, nunca desde la cuenta o el slot del servidor.
+- **Identificación de Cuentas de Destino:** Debe indicar con precisión la cuenta o Fan Page exacta de cada plataforma (ej. `@graciasteaviso`, `Fan Page Mix On (Matriz)`, `@mixontv_ - Matriz`, etc.).
+- **Balance de Cobertura Multiplataforma:** Cada notificación debe incluir el resumen de cobertura (ej. `3 de 5 redes cubiertas`), distinguiendo qué cuentas se publicaron en la corrida actual, cuáles ya estaban activas de antes y cuáles siguen pendientes en la cuenta del show.
+
+# Blindaje Inviolable Anti-Contaminación de Shows en Telegram (`TELEGRAM_TOPIC_BY_PROGRAM`)
+- **Aislamiento Estricto de Tópicos por Show:** Cada programa tiene un foro/tópico único e inmutable en el grupo de Telegram Mix On:
+  * `FDF`: Tópico `2`
+  * `PF`: Tópico `306`
+  * `GP`: Tópico `3`
+  * `GTA`: Tópico `2552`
+  * `SPORTS` / `MOS`: Tópico `2927`
+  * `HHQG`: Tópico `259`
+- ❌ **Prohibición de Búsqueda Léxica Cruzada:** Queda TERMINANTEMENTE PROHIBIDO asociar o descargar un video de Telegram si su `topic_id` no coincide de forma exacta con el programa asignado. Coincidencia semántica mínima del 60% y al menos 2 palabras clave.
+
+# Aislamiento Estricto de Slots de X / Twitter y Prohibición de Suplementarios Meta en Turnos de X
+- **Exclusividad de Redes en Slots de X (`is_x_only_item`):** Los slots de X / Twitter (`SLOT_10`, `SLOT_13`, `SLOT_17`, `SLOT_20`, `SLOT_23`) tienen como único requerimiento `['TWITTER']`.
+- ❌ **Prohibición de Suplementarios Meta/TikTok en Slots de X:** Queda TERMINANTEMENTE PROHIBIDO que el scheduler interprete que faltan redes en un slot de X y busque clips suplementarios de Instagram, Facebook o TikTok. En `SLOT_23` (23:00 hs) o cualquier ítem de Twitter, `needed_uncovered` es estrictamente vacío.
+
+# Circuito de Cooldown Obligatorio en Uploader y Suplementarios (Circuit Breaker Anti-Canibalización)
+- **Gatekeeper en `upload_dual_meta_reel`:** Antes de enviar llamadas a Instagram, Facebook o TikTok, el uploader audita `RateLimitGuard`. Si han transcurrido menos de 75-90 minutos desde la última publicación del show en esa plataforma, la emisión se aborta automáticamente (`SKIPPED_COOLDOWN`).
+- **Filtro Previo en Suplementarios:** Todo clip complementario audita el cooldown por plataforma antes de su despacho. Si está en cooldown, no se envía.
+
+# Botón de Pausa de Emergencia y Kill-Switch 24/7 (`/pausa` y `/reanudar`)
+- **Comandos de Emergencia en Telegram:**
+  * `/pausa` o `/stop` o `/emergencia`: Crea `/home/opc/mixon-uploader/EMERGENCY_STOP.flag` y congela de inmediato todo procesamiento y subida en el servidor.
+  * `/reanudar` o `/play` o `/continuar`: Elimina la flag y reanuda el despacho normal de la cola.
+- **Botón Inline de Emergencia:** Todo reporte de turno enviado a Telegram incluye el botón interactivo `[🛑 PAUSAR SISTEMA DE EMERGENCIA]` para frenar la cola con un solo toque desde el teléfono.
 - **YouTube Shorts (`@Mixontv_`):** Va **SOLO el título limpio** (`{TITULO}`), sin sufijo `| PROGRAMA...` ni `#Shorts`.
 - **Instagram Reels, Facebook Reels y TikTok (`getFormattedTitle`):**
   * ❌ **PROHIBIDO** incluir hashtags (`#`) o enlaces de YouTube en Meta Reels o TikTok.
