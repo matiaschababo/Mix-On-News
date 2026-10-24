@@ -61,6 +61,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - A medida que ingresan clips nuevos de actualidad o tendencias, entran en el turno más próximo disponible ("más recientes primero") y desplazan los clips de archivo hacia adelante.
 - Ventana de congelamiento (*Freeze Window*): no se modifican slots programados dentro de las próximas 3 horas. Las urgencias rompen el congelamiento y salen al instante.
 
+# REGLA PRIMORDIAL VINCULANTE: CERO PÉRDIDA DE TURNOS (4 CLIPS POR SHOW AL DÍA)
+- **Principio Inviolable de Cobertura Total (No Perder Turnos Jamás):** Bajo ninguna circunstancia se puede perder un turno diario de un programa. Cada show debe completar rigurosamente sus 4 turnos oficiales diarios (16 turnos diarios de shows + slots de Shorts/Matriz). Si un clip se retrasa, falla momentáneamente en Telegram o debe reubicarse por cooldown anti-canibalización, el sistema **TIENE la obligación de aprovechar en primera instancia los turnos oficiales restantes del mismo día que estén vacíos o sin contenido virgen asignado**.
+- **Prohibición de Postergación Prematura a Mañana:** Queda TERMINANTEMENTE PROHIBIDO postergar un clip al día siguiente si hoy todavía queda un turno oficial del programa sin cubrir y existe margen de respiro temporal (mínimo 75 minutos desde la última emisión real). Por ejemplo, si el clip de las 20:30 hs de GTA se demora o no salió a tiempo, debe reubicarse automáticamente para cubrir el turno oficial de las 22:30 hs de hoy, garantizando que el show no cierre el día con 3 clips en lugar de 4.
+
 # Protocolo Maestro de Rescate en Ventanas Libres y Espaciado Anti-Canibalización (Rescue Window Spacing)
 - **Regla Inquebrantable Anti-Canibalización (Mínimo 75-90 min entre publicaciones del mismo show):**
   * Dos clips de la **misma cuenta de programa** (ej. `@fueradefoco.mixon`) **JAMÁS deben publicarse con menos de 75 a 90 minutos de diferencia**, para no dividir el algoritmo ni destruir el alcance orgánico del clip anterior.
