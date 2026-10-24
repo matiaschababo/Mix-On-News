@@ -65,11 +65,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Principio Inviolable de Cobertura Total (No Perder Turnos Jamás):** Bajo ninguna circunstancia se puede perder un turno diario de un programa. Cada show debe completar rigurosamente sus 4 turnos oficiales diarios (16 turnos diarios de shows + slots de Shorts/Matriz). Si un clip se retrasa, falla momentáneamente en Telegram o debe reubicarse por cooldown anti-canibalización, el sistema **TIENE la obligación de aprovechar en primera instancia los turnos oficiales restantes del mismo día que estén vacíos o sin contenido virgen asignado**.
 - **Prohibición de Postergación Prematura a Mañana:** Queda TERMINANTEMENTE PROHIBIDO postergar un clip al día siguiente si hoy todavía queda un turno oficial del programa sin cubrir y existe margen de respiro temporal (mínimo 75 minutos desde la última emisión real). Por ejemplo, si el clip de las 20:30 hs de GTA se demora o no salió a tiempo, debe reubicarse automáticamente para cubrir el turno oficial de las 22:30 hs de hoy, garantizando que el show no cierre el día con 3 clips en lugar de 4.
 
-# Hilo Conductor Cronológico (FIFO Obligatorio por Live)
-- **Regla Inquebrantable de Narrativa por Live:** Cuando existen múltiples clips que provienen de la **misma fecha de emisión o programa en vivo** (ej: `clip01`, `clip02`, `clip03`, `clip06`, `clip08` de FDF del 23/10):
-  * **Los clips del mismo live DEBEN emitirse en riguroso orden cronológico correlativo** (inicio -> desarrollo -> remate).
-  * Queda estrictamente prohibido alterar el orden de los capítulos de un mismo programa (ej: publicar la parte 2 o el remate antes de la parte 1).
-  * Si un clip de un live pierde su turno matutino, **toma de inmediato el próximo turno oficial del mismo show** y desplaza los clips siguientes de ese live hacia adelante (Cascada Inmediata).
+# Hilo Conductor Cronológico (Jerarquía Dual: Inter-Live LIFO vs Intra-Live FIFO)
+- **Principio Rector:** Siempre las urgencias primero, y las urgencias más frescas primero. Pero si son del mismo live, salen en riguroso orden cronológico correlativo:
+  * **Inter-Live (Entre Transmisiones Distintas):** Las urgencias y temas de actualidad más recientes tienen prioridad absoluta sobre material de archivo y emisiones anteriores (LIFO entre emisiones: lo nuevo desplaza lo viejo).
+  * **Intra-Live (Dentro de la Misma Transmisión / Live):** Cuando existen múltiples clips que provienen de la **misma fecha de emisión o programa en vivo** (ej: `clip01`, `clip02`, `clip03`, `clip06`, `clip08` de FDF del 23/10):
+    - **Los clips del mismo live DEBEN emitirse en riguroso orden cronológico correlativo** (inicio -> desarrollo -> remate).
+    - Queda estrictamente prohibido alterar el orden de los capítulos de un mismo programa o emitir el remate/conclusión antes del inicio.
+    - Si un clip de un live pierde su turno matutino, **toma de inmediato el próximo turno oficial del mismo show** y desplaza los clips siguientes de ese live hacia adelante (Cascada Inmediata).
 
 # Fuente Única de la Verdad para Copys, Títulos y Redes (Prohibición Expresa de Nombres de Archivo - Caso #85)
 - **Principio Canónico:** Todo título, gancho, copy, pie de publicación o texto de red social **DEBE provenir exclusivamente del Content Manager (`Clip.title` en Supabase)**.
