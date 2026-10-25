@@ -153,3 +153,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Gracias Te Aviso (`GTA`):** `['mixontv_', 'ticisaraceni', 'georgiserafini', 'agustinawuipi']`.
 - **Giro Perfecto (`GP`):** `['mixontv_', 'patofilippini', 'mativillagra', 'joaquinenecoiz']`.
 - **Mix On Sports (`SPORTS` / `MOS`):** `['mixontv_', 'gabrielluispennise', 'juliandmartin']`.
+
+# Integridad Original de Video, TikTok Matriz Exacto y Descargas Atómicas (Casos #146–#154 — 25/10/2026)
+- **Prohibición Absoluta de Recortar o Comprimir Videos Originales:** Si un video supera `140.0s` (tope Twitter API), se omite X directamente **sin cortarlo ni recortarlo jamás**. Cero recodificación; guarda pre-descarga únicamente en el techo técnico real de `1000 MB` (`1 GB`) de Meta Reels API (`SKIPPED_OVERSIZE` + reemplazo).
+- **Mix On Sports (`SPORTS` / `MOS`):** Desacoplado para emitir videos `>180s` íntegros en IG Reels, FB Reels y TikTok; YouTube Shorts siempre bajo compuerta manual por copyright deportivo; anti-duplicado exacto normalizado (`target_norm == d_norm`) sin fuzzy `0.85`.
+- **TikTok Matriz (`@mixontv_` — 1 Solo Clip por Slot):** Estrictamente 1 clip en cada uno de los 4 turnos (`11:00`, `13:00`, `17:00`, `21:00`), cooldown específico de `95 min` en `RateLimitGuard`, persistencia en disco de `SUPERSEDED_SLOT_COLLISION` y prohibición de canibalizar los 4 turnos de hoy del show en `heal_matriz_slot`.
+- **Resiliencia de Staging y Crontab Preventivo:** Descarga atómica `.mp4.part` con `progress_callback` heartbeat cada 15s (Sentinel 15 min) + chequeo `ffprobe > 0.5s`, filtro anti-fechas futuras en `RateLimitGuard` y doble pasada matutina `sync_real_published_history.py -> morning_preflight_audit.py` (`06:10 -> 06:30` y `09:15 -> 09:25 ART`).
