@@ -149,7 +149,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
   * Clips anotados/grabados entre el 19/10/2026 y 22/10/2026: `['mixontv_', 'franmetzz', 'nahu.cantero']`.
   * Clips de archivo históricos anteriores al 19/10/2026: `['mixontv_', 'franmetzz', 'dianecaracchi']`.
   * Determinación de Fecha: La era se determina por fecha real en Supabase (`Episode.airDate` o `Clip.createdAt`), no por la fecha de programación en la cola.
-- **Prendido Fuego (`PF`):** `['mixontv_', 'tomasholder_', 'dianecaracchi', 'luliicaserossi']`.
+- **Prendido Fuego (`PF`):** `['mixontv_', 'dianecaracchi', 'luliicaserossi']`.
 - **Gracias Te Aviso (`GTA`):** `['mixontv_', 'ticisaraceni', 'georgiserafini', 'agustinawuipi']`.
 - **Giro Perfecto (`GP`):** `['mixontv_', 'patofilippini', 'mativillagra', 'joaquinenecoiz']`.
 - **Mix On Sports (`SPORTS` / `MOS`):** `['mixontv_', 'gabrielluispennise', 'juliandmartin']`.
