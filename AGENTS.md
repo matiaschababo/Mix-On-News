@@ -181,3 +181,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
   2. `AGENTS.md` (en todos los workspaces)
   3. `agent_learnings.jsonl` (memoria en disco en Oracle VM)
   4. Commit y push inmediato a `origin main` en Git.
+
+# Arquitectura del Enjambre Multiagente Autónomo Mix On (Caso #173 — 26/10/2026)
+Todo el sistema opera bajo una jerarquía desacoplada de 5 agentes especializados inspirada en SpaceX, DuckSays, bl888m y Santiago Cura:
+- **Chief of Staff (`ChiefOfStaffAgent`):** Orquestador general State-In / Decision-Out. Convoca al squad de especialistas, somete planes al QA Critic y ejecuta acciones aprobadas.
+- **CMO Growth Agent (`CMOGrowthAgent`):** Custodio de las métricas canónicas auditadas (83.85M vistas, 40.539 hs YouTube). Administra cooldowns anti-canibalización, viralidad LIFO y Fallback Dinámico de Twitter (<140s, sin Sports).
+- **Creative Showrunner Agent (`CreativeShowrunnerAgent`):** Orden cronológico correlativo intra-live FIFO (inicio -> desarrollo -> remate), copies Grok-mode en X (<140 caracteres, pregunta de debate, sin links a YouTube) y sufijo contemporáneo unificado de FDF (`con Fran Metz, Nahuel Cantero y Toti Or`).
+- **Squad Especialista:**
+  * `AutonomousIngestionAgent`: Ingesta atómica de Telegram (Ro Mayorga) y promoción de stock fresco.
+  * `PlatformPublisherGuardAgent`: Buffer Circuit Breaker (240s deadline, 600s cooldown), Cooldown Split Guard, límites de 140s en X y 1080p en Instagram sin re-codificación.
+- **QA Critic Agent (`QACriticAgent` — El "Abogado del Diablo"):** Veto Power absoluto sobre cualquier acción que viole la persistencia del clip original (Caso #156), intente postergar a mañana habiendo ventanas nocturnas hoy (Caso #168), dispare en caliente cerca de turnos oficiales (Caso #167) o use copys con conductores históricos (Caso #171). Cero tolerancia a la mediocridad o clichés robóticos.
