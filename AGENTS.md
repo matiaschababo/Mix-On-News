@@ -37,11 +37,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
   3. Haz commit con un mensaje descriptivo y claro en español o conventional commits (ej: `feat: ...`, `fix: ...`).
   4. Haz `git push origin main` inmediatamente para que la otra máquina (sea Mac o Windows) siempre quede sincronizada automáticamente sin que el usuario tenga que recordarlo.
 
-# Rol en el Ecosistema Mix On (Satélite: Mix On NEws)
-- Esta aplicación es un proyecto satélite de código independiente (Portal de noticias de streaming y extensión de clipping).
-- NO mezclar con archivos de `clips-manager` ni con la carpeta raíz de Google Drive `Mix On`.
-
 # Grilla Oficial de Publicación por Red Social y Programa (Schedule Binding)
+Todo bot o agente que programe o asigne publicaciones en `ClipPublication` o gestione colas debe respetar estrictamente:
+
 - **YouTube Shorts (`@Mixontv_`):** 5 turnos diarios espaciados cada 3 a 4 horas: **`10:00`, `13:00`, `17:00`, `20:00` y `23:00` hs ART** (`SLOT_10`, `SLOT_13`, `SLOT_17`, `SLOT_20`, `SLOT_23`) con `notifySubscribers=False`, rotación de programas y anti-colisión temática por día.
 - **Instagram Reels y Facebook Reels (4 clips por programa al día):**
   * `FDF`: `10:00`, `13:00`, `16:00`, `19:00` hs ART
@@ -60,6 +58,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # Ingesta Dinámica y Desplazamiento en Cascada (Ripple Shift)
 - A medida que ingresan clips nuevos de actualidad o tendencias, entran en el turno más próximo disponible ("más recientes primero") y desplazan los clips de archivo hacia adelante.
 - Ventana de congelamiento (*Freeze Window*): no se modifican slots programados dentro de las próximas 3 horas. Las urgencias rompen el congelamiento y salen al instante.
+- **Hilo Conductor Cronológico (FIFO para Urgencias del Mismo Show):** Cuando entran múltiples urgencias de un mismo programa y fecha (ej: GTA), se asignan estrictamente en orden cronológico (`14:30`, `17:30`, `20:30`, `22:30`) para preservar la correlatividad de la transmisión (inicio -> desarrollo -> remate). Las urgencias previas del mismo día no se desplazan entre sí; solo los clips de archivo de stock se desplazan en cascada (+1 slot) hacia adelante.
+- **Comando `/urgencias` y Cascada Inversa (-1 Slot / Pull-Back Cascade):** Permite consultar las primicias en espera y dispararlas en vivo al instante con el botón interactivo `[🚀 Publicar YA]`. Al publicarse en caliente, la función `pull_back_schedule_after_immediate_publish` adelanta -1 slot todos los clips pendientes posteriores del show en `meta_scheduled_queue.json` y Supabase, compactando la grilla sin baches vacíos.
+- **Blindaje Anti-Duplicados en Disparo Inmediato:** Todo disparo bajo demanda ejecuta `audit_clip_virginity_and_pending_platforms` sobre las 5 plataformas (YT, IG, FB, TT, X). Si el clip ya fue emitido en una red, esa plataforma queda excluida de la llamada y se publica únicamente en las restantes redes vírgenes.
+- **Sistema de Priorización Viral (`prioritize_clip_to_next_turn` / Telegram `/prioridad` y botón inline `[🔥 Próximo Turno]`):** Permite adelantar cualquier clip de inmediato al próximo turno oficial de su programa (ej. `:30` para GTA) en todas las redes donde aún no se emitió, desplazando el archivo remanente en cascada (+1 slot) y purgando calendarizaciones lejanas para evitar duplicados. Resuelve el show mediante 4 vías: FK `programId` en base de datos, prefijo en comando (`/prioridad gta airbag`), selector interactivo y metadatos en callback.
 
 # REGLA PRIMORDIAL VINCULANTE: CERO PÉRDIDA DE TURNOS (4 CLIPS POR SHOW AL DÍA)
 - **Principio Inviolable de Cobertura Total (No Perder Turnos Jamás):** Bajo ninguna circunstancia se puede perder un turno diario de un programa. Cada show debe completar rigurosamente sus 4 turnos oficiales diarios (16 turnos diarios de shows + slots de Shorts/Matriz). Si un clip se retrasa, falla momentáneamente en Telegram o debe reubicarse por cooldown anti-canibalización, el sistema **TIENE la obligación de aprovechar en primera instancia los turnos oficiales restantes del mismo día que estén vacíos o sin contenido virgen asignado**.
@@ -94,6 +96,30 @@ This version has breaking changes — APIs, conventions, and file structure may 
     - **Giro Perfecto (GP):** Ventana nocturna a las `22:30` hs o `23:00` hs (después de las 21:00 hs).
     - **Gracias Te Aviso (GTA):** Ventana intermedia a las `19:00` hs (entre 17:30 y 20:30 hs) o `21:30` hs.
 
+# Blindaje Obligatorio de Copy por Plataforma (`lib/programs.ts`)
+- **YouTube Shorts (`@Mixontv_`):** Va **SOLO el título limpio** (`{TITULO}`), sin sufijo `| PROGRAMA...` ni `#Shorts`.
+- **Instagram Reels, Facebook Reels y TikTok (`getFormattedTitle`):**
+  * ❌ **PROHIBIDO** incluir hashtags (`#`) o enlaces de YouTube (`Mirá el programa completo...`) en Meta Reels o TikTok.
+  * **Fuera de Foco (`FDF`):** `{TITULO} | FUERA DE FOCO Lunes a Viernes de 11 a 13 hs con Fran Metz, Nahuel Cantero y Toti Or`
+  * **Gracias Te Aviso (`GTA`):** `{TITULO} | GRACIAS TE AVISO Lunes a Viernes de 13 a 15 hs con Tici Saraceni, Agus Wuipi y Georgi Serafini`
+  * **Prendido Fuego (`PF`):** `{TITULO} | PRENDIDO FUEGO por Mix On de Lunes y Miércoles de 15 a 17 hs con Tomas Holder, Diane Caracchi y Luli Case Rossi`
+  * **Giro Perfecto (`GP`):** `{TITULO} | GIRO PERFECTO Lunes a Viernes de 17 a 19 hs CON Pato Filippini, Matias Villagra y Joaquín Enecoiz`
+  * **Mix On Sports (`SPORTS` / `MOS`):** `{TITULO} | MIX ON SPORTS`
+- **X / Twitter (`getFormattedXPost` / `format_x_clip_post`):**
+  * ❌ **Cero enlaces salientes y cero sufijos largos de horarios:** Prohibido incluir links a YouTube (`https://youtube.com/@mixontv_`) o textos repetitivos de conductores/horarios (penalización severa de alcance orgánico en X).
+  * **Formato Nativo Conversacional:** Pregunta o gancho de debate limpio (`¿...? 👇`) + firma minimalista `🎙️ {Programa}` (máx 280 caracteres, promedio <140 caracteres) para traccionar replies nativas.
+  * **Desactivación de Auto-Tweet para Video Largo a las 20:01 hs:** Inhabilitado para no colisionar con el clip nativo de las 20:00 hs ni recibir penalización por link saliente.
+- **Colaboradores Co-autores Oficiales en Instagram Reels (Handles Exactos):**
+  * **Prendido Fuego (`PF`):** `['mixontv_', 'dianecaracchi', 'luliicaserossi']` *(con doble 'i')*.
+  * **Fuera de Foco (`FDF`):**
+    - **Clips anotados/grabados desde el 23/10/2026 en adelante:** `['mixontv_', 'franmetzz', 'nahu.cantero', 'toti_or']` *(con `@toti_or`)*.
+    - **Clips anotados/grabados entre el 19/10/2026 y 22/10/2026:** `['mixontv_', 'franmetzz', 'nahu.cantero']`.
+    - **Clips de archivo históricos anteriores al 19/10/2026:** `['mixontv_', 'franmetzz', 'dianecaracchi']`.
+    - **Determinación Canónica de Fecha:** La era del clip se determina estrictamente por su fecha real en Supabase (`Episode.airDate` o `Clip.createdAt`), NUNCA por la fecha futura asignada en la cola (`scheduled_art`). Todo el stock de archivo previo a octubre conserva su elenco original.
+  * **Gracias Te Aviso (`GTA`):** `['mixontv_', 'ticisaraceni', 'georgiserafini', 'agustinawuipi']` *(con 'agustina')*.
+  * **Giro Perfecto (`GP`):** `['mixontv_', 'patofilippini', 'mativillagra', 'joaquinenecoiz']`.
+  * **Mix On Sports (`SPORTS` / `MOS`):** `['mixontv_', 'gabrielluispennise', 'juliandmartin']` *(excluyendo a patofilippini y mativillagra por directiva operativa)*.
+
 # Prohibición Absoluta de Contenido Duplicado y Gestión de Stock por Plataforma
 - **Regla Anti-Duplicados Estricta:** Un clip que ya fue publicado o programado en una cuenta o red social, **JAMÁS puede volver a publicarse en esa misma plataforma ni repetirse entre cuentas distintas de la misma red** (ej: no duplicar entre la cuenta de show y la cuenta matriz de TikTok). Cada turno debe ser un clip 100% virgen para esa red.
 - **Stock Independiente por Plataforma:** Cada red tiene un stock disponible distinto según el historial del Content Manager. El stock de YouTube Shorts es independiente del de TikTok o Meta.
@@ -101,8 +127,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Cobertura Multi-Clip Complementaria (1 a 4 clips por turno):** No es necesario que un único clip sea virgen en las 4 o 5 redes para cubrir un turno. Si un clip solo es virgen en una red (ej. Twitter o TikTok), se despacha para esa red y las restantes del turno se cubren en simultáneo con otro(s) clip(s) virgen(es) del mismo programa.
 - **Desbloqueo Anti-Colisión Multi-Clip en Scheduler:** `meta_queue_scheduler.py` evalúa la emisión por par `seen_prog_plats[prog].add(platform)`, permitiendo el despacho paralelo de clips complementarios sin falsos bloqueos.
 - **Política de Faltante de Stock por Red:** Si no hay stock virgen de un programa para una red particular, **no pasa nada: NO se sube en esa red**. El turno se aprovecha siempre y cuando exista stock virgen para esa plataforma. Queda terminantemente prohibido duplicar o forzar re-subidas.
-
-
 
 # Protocolo de Reportes Telegram Centrados en el Clip (Clip-Centric Reporting)
 - **El Producto es el Clip:** Todo reporte de publicación o alerta emitida hacia Telegram debe estructurarse desde la perspectiva del **clip como protagonista**, nunca desde la cuenta o el slot del servidor.
@@ -117,7 +141,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
   * `GTA`: Tópico `2552`
   * `SPORTS` / `MOS`: Tópico `2927`
   * `HHQG`: Tópico `259`
-- ❌ **Prohibición de Búsqueda Léxica Cruzada:** Queda TERMINANTEMENTE PROHIBIDO asociar o descargar un video de Telegram si su `topic_id` no coincide de forma exacta con el programa asignado. Coincidencia semántica mínima del 60% y al menos 2 palabras clave.
+- ❌ **Prohibición de Búsqueda Léxica Cruzada:** Queda TERMINANTEMENTE PROHIBIDO asociar o descargar un video de Telegram si su `topic_id` no coincide de forma exacta con el programa asignado. Ninguna coincidencia de palabras ("recitales", "amor", "futbol") puede saltarse el candado de tópico ni la coherencia de firma de show (`SHOW_SIGNATURES`). Coincidencia semántica mínima del 60% y al menos 2 palabras clave.
 
 # Aislamiento Estricto de Slots de X / Twitter y Prohibición de Suplementarios Meta en Turnos de X
 - **Exclusividad de Redes en Slots de X (`is_x_only_item`):** Los slots de X / Twitter (`SLOT_10`, `SLOT_13`, `SLOT_17`, `SLOT_20`, `SLOT_23`) tienen como único requerimiento `['TWITTER']`.
@@ -132,27 +156,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
   * `/pausa` o `/stop` o `/emergencia`: Crea `/home/opc/mixon-uploader/EMERGENCY_STOP.flag` y congela de inmediato todo procesamiento y subida en el servidor.
   * `/reanudar` o `/play` o `/continuar`: Elimina la flag y reanuda el despacho normal de la cola.
 - **Botón Inline de Emergencia:** Todo reporte de turno enviado a Telegram incluye el botón interactivo `[🛑 PAUSAR SISTEMA DE EMERGENCIA]` para frenar la cola con un solo toque desde el teléfono.
-- **YouTube Shorts (`@Mixontv_`):** Va **SOLO el título limpio** (`{TITULO}`), sin sufijo `| PROGRAMA...` ni `#Shorts`.
-- **Instagram Reels, Facebook Reels y TikTok (`getFormattedTitle`):**
-  * ❌ **PROHIBIDO** incluir hashtags (`#`) o enlaces de YouTube en Meta Reels o TikTok.
-  * **Fuera de Foco (`FDF` — desde el 19/10/2026 en adelante):** `{TITULO} | FUERA DE FOCO Lunes a Viernes de 11 a 13 hs con Fran Metz, Nahuel Cantero y Toti Or`
-  * **Fuera de Foco (`FDF` — archivo histórico antes del 19/10/2026):** `{TITULO} | FUERA DE FOCO 📸 Lunes a Viernes de 11 a 13 hs CON FRAN METZ, DIANE CARACCHI Y FACU COLMAN`
-  * **Gracias Te Aviso (`GTA`):** `{TITULO} | GRACIAS TE AVISO Lunes a Viernes de 13 a 15 hs con Tici Saraceni, Agus Wuipi y Georgi Serafini`
-  * **Prendido Fuego (`PF`):** `{TITULO} | PRENDIDO FUEGO por Mix On de Lunes y Miércoles de 15 a 17 hs con Tomas Holder, Diane Caracchi y Luli Case Rossi`
-  * **Giro Perfecto (`GP`):** `{TITULO} | GIRO PERFECTO Lunes a Viernes de 17 a 19 hs CON Pato Filippini, Matias Villagra y Joaquín Enecoiz`
-  * **Mix On Sports (`SPORTS` / `MOS`):** `{TITULO} | MIX ON SPORTS`
-- **X / Twitter (`getFormattedXPost` / `format_x_clip_post`):** Formato conversacional limpio sin links salientes a YouTube.
 
-# Colaboradores Co-autores Oficiales en Instagram Reels (Handles Exactos)
-- **Fuera de Foco (`FDF`):**
-  * Clips anotados/grabados desde el 23/10/2026 en adelante: `['mixontv_', 'franmetzz', 'nahu.cantero', 'toti_or']` *(con `@toti_or`)*.
-  * Clips anotados/grabados entre el 19/10/2026 y 22/10/2026: `['mixontv_', 'franmetzz', 'nahu.cantero']`.
-  * Clips de archivo históricos anteriores al 19/10/2026: `['mixontv_', 'franmetzz', 'dianecaracchi']`.
-  * Determinación de Fecha: La era se determina por fecha real en Supabase (`Episode.airDate` o `Clip.createdAt`), no por la fecha de programación en la cola.
-- **Prendido Fuego (`PF`):** `['mixontv_', 'dianecaracchi', 'luliicaserossi']`.
-- **Gracias Te Aviso (`GTA`):** `['mixontv_', 'ticisaraceni', 'georgiserafini', 'agustinawuipi']`.
-- **Giro Perfecto (`GP`):** `['mixontv_', 'patofilippini', 'mativillagra', 'joaquinenecoiz']`.
-- **Mix On Sports (`SPORTS` / `MOS`):** `['mixontv_', 'gabrielluispennise', 'juliandmartin']`.
+
+
 
 # Integridad Original de Video, TikTok Matriz Exacto y Descargas Atómicas (Casos #146–#154 — 25/10/2026)
 - **Prohibición Absoluta de Recortar o Comprimir Videos Originales:** Si un video supera `140.0s` (tope Twitter API), se omite X directamente **sin cortarlo ni recortarlo jamás**. Cero recodificación; guarda pre-descarga únicamente en el techo técnico real de `1000 MB` (`1 GB`) de Meta Reels API (`SKIPPED_OVERSIZE` + reemplazo).
@@ -191,3 +197,8 @@ Todo el sistema opera bajo una jerarquía desacoplada de 5 agentes especializado
   * `AutonomousIngestionAgent`: Ingesta atómica de Telegram (Ro Mayorga) y promoción de stock fresco.
   * `PlatformPublisherGuardAgent`: Buffer Circuit Breaker (240s deadline, 600s cooldown), Cooldown Split Guard, límites de 140s en X y 1080p en Instagram sin re-codificación.
 - **QA Critic Agent (`QACriticAgent` — El "Abogado del Diablo"):** Veto Power absoluto sobre cualquier acción que viole la persistencia del clip original (Caso #156), intente postergar a mañana habiendo ventanas nocturnas hoy (Caso #168), dispare en caliente cerca de turnos oficiales (Caso #167) o use copys con conductores históricos (Caso #171). Cero tolerancia a la mediocridad o clichés robóticos.
+
+# Candado de Archivo Cruzado (Cross-Platform Archive Lock — Caso #174 — 26/10/2026)
+- **Principio Canónico de Archivo Consolidado:** Todo clip que haya sido emitido en Instagram, Facebook o YouTube hace más de 14 días (o cuya creación en Supabase sea de archivo histórico) **se considera EMITIDO A NIVEL ECOSISTEMA**.
+- ❌ **Prohibición Estricta de Asumir "Virgen" en TikTok o Twitter:** Queda TERMINANTEMENTE PROHIBIDO que cualquier script, cola o agente asuma que un clip viejo es virgen para TikTok o Twitter solo porque no tiene tilde o registro en Supabase `ClipPublication`. En el pasado el equipo subía manualmente a TikTok desde la app sin registrar en base de datos.
+- **Bloqueo Preventivo en `dedup_guard.py` y Veto en `QACriticAgent`:** Si un clip tiene emisión histórica (>14 días) en Meta o YouTube, `MasterPublishedRegistry` devuelve duplicado confirmado (`True`) para `TIKTOK` y `TWITTER`, y el QA Critic veta de forma fulminante cualquier intento de calendarización o publicación de stock histórico en esas dos plataformas.
