@@ -261,6 +261,14 @@ Todo el sistema opera bajo una jerarquía desacoplada de 5 agentes especializado
   * Se eliminó el diccionario `X_PROGRAM_HOOKS` de `config.py` y `lib/programs.ts`.
   * La función `format_x_clip_post` en el uploader de Python y `getFormattedXPost` en TypeScript formatean directamente `{clean_title}\n\n🎙️ {prog_name}`, recortando con puntos suspensivos solo si el título excede los 280 caracteres permitidos por la API de X.
 
+# Validación Canónica de Cobertura Multi-Clip Asincrónica, Primacía de Frescura y Cero Pérdida de Turnos (Caso #181 — 27/10/2026)
+- **Directiva Vinculante del Usuario:**
+  * **Desincronización Multiplataforma Permitida:** No es obligatorio que todas las redes sociales publiquen exactamente el mismo clip al mismo tiempo si una o más plataformas ya lo emitieron previamente. Si una red ya consumió un clip, esa red puede recibir otro clip virgen distinto para cubrir el slot.
+  * **Primacía Estricta de Frescura por Red:** Siempre se debe priorizar el material virgen más reciente (urgencias primero, luego clips de transmisiones contemporáneas de la semana). Queda prohibido recurrir a archivo histórico si existen clips recientes sin publicar en esa red.
+  * **Principio Inviolable de Cero Pérdida de Turnos ("No perder turnos por nada en el mundo"):** Cada show debe cumplir de manera inquebrantable con sus 4 turnos oficiales diarios (16 turnos de shows diarios + slots de Shorts/Matriz). Ningún turno horario puede quedar desierto si existe material disponible.
+  * **Cero Duplicados en esa Red:** Cada clip emitido debe ser 100% virgen en la cuenta o plataforma de destino.
+
+
 
 
 
