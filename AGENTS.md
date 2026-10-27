@@ -203,3 +203,15 @@ Todo el sistema opera bajo una jerarquía desacoplada de 5 agentes especializado
 - ❌ **Prohibición Terminante de Inferencias Cruzadas:** Queda terminantemente prohibido asumir que porque un clip salió en Meta en el pasado, "ya salió en TikTok". Esa suposición genera falsos positivos masivos, bloquea clips vírgenes y destruye turnos de publicación.
 - **Trazabilidad Real por Red:** La deduplicación en `dedup_guard.py` y `QACriticAgent` audita la plataforma específica de destino contra sus registros confirmados en Supabase y `published_registry.json`. Si un clip viejo es virgen en TikTok, es 100% elegible para emitirse en TikTok.
 - **Priorización de Frescura Contemporánea:** Para evitar que la grilla recurra a material de archivo lejano (agosto/septiembre), el enjambre debe priorizar siempre el stock de los últimos 7-14 días y alertar cuando un show se queda sin clips frescos del último programa en vivo.
+
+# Prohibición Terminante de Miniaturas Personalizadas en YouTube Shorts (Caso #175 — 26/10/2026)
+- ❌ **Shorts Cero Miniaturas:** Los YouTube Shorts (formato vertical 9:16, duración < 180s) **NUNCA deben llevar miniatura personalizada** subida por API ni por bot. El algoritmo de YouTube Shorts selecciona y renderiza automáticamente un frame nativo vertical 9:16. Subir una miniatura 16:9 horizontal degrada la visualización y rompe el feed móvil.
+- **Exclusividad para YouTube Lives:** Las miniaturas personalizadas 16:9 diseñadas por Ro Mayorga son **exclusivamente para los videos largos de transmisión en vivo de 2 horas (YouTube Live)**.
+- **Veto en QA Critic y Tools:** `tool_sync_pending_thumbnails` en `mixon_agent_tools.py` y Check #7 en `QACriticAgent` vetan automáticamente cualquier intento de setear miniatura en videos de duración < 300s o marcados como shorts.
+
+# Freshness Scope Guard y Priorización de Stock Fresco (<14 Días) (Caso #176 — 26/10/2026)
+- **Prioridad a la Actualidad Contemporánea:** Todo turno programado debe nutrirse de clips del vivo del día o de los últimos 7 a 14 días.
+- **Guardián de Frescura en CMO Agent:** `audit_freshness_scope` evalúa la antigüedad de los clips y penaliza (-30 pts) material con más de 21 días de antigüedad en el fallback de Twitter y selección de colas, bonificando (+50 pts) a clips menores a 7 días.
+- **Alerta de Stock Añejo:** Si un programa tiene stock únicamente mayor a 14 días, el sistema emite alerta a Telegram para que los editores carguen clips frescos del vivo de hoy en lugar de recurrir ciegamente a meses anteriores.
+- **Inyección en Gemini 2.5 Flash:** `get_dynamic_system_prompt()` en `mixon_agent_core.py` inyecta dinámicamente estos precedentes y aprendizajes operativos para que los agentes razonen con todo el contexto antes de tomar decisiones.
+
