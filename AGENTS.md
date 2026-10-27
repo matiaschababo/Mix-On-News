@@ -107,7 +107,8 @@ Todo bot o agente que programe o asigne publicaciones en `ClipPublication` o ges
   * **Mix On Sports (`SPORTS` / `MOS`):** `{TITULO} | MIX ON SPORTS`
 - **X / Twitter (`getFormattedXPost` / `format_x_clip_post`):**
   * ❌ **Cero enlaces salientes y cero sufijos largos de horarios:** Prohibido incluir links a YouTube (`https://youtube.com/@mixontv_`) o textos repetitivos de conductores/horarios (penalización severa de alcance orgánico en X).
-  * **Formato Nativo Conversacional:** Pregunta o gancho de debate limpio (`¿...? 👇`) + firma minimalista `🎙️ {Programa}` (máx 280 caracteres, promedio <140 caracteres) para traccionar replies nativas.
+  * ❌ **Cero preguntas genéricas o artificiales de IA (Caso #180 - Directiva Vinculante):** Prohibido insertar preguntas genéricas o hooks de debate inventados como "¿Te pasó algo así o bancás? 👇", "¿Bancás o se fueron al pasto?", "¿Qué opinás de esto? Te leemos 👇". Quedan falsas, parecen generadas por IA y desvirtúan el clip.
+  * **Formato Limpio, Simple y Sobrio:** Estrictamente `{TITULO}\n\n🎙️ {Programa}` (máx 280 caracteres). Simple, directo y al grano.
   * **Desactivación de Auto-Tweet para Video Largo a las 20:01 hs:** Inhabilitado para no colisionar con el clip nativo de las 20:00 hs ni recibir penalización por link saliente.
 - **Colaboradores Co-autores Oficiales en Instagram Reels (Handles Exactos):**
   * **Prendido Fuego (`PF`):** `['mixontv_', 'dianecaracchi', 'luliicaserossi']` *(con doble 'i')*.
@@ -219,5 +220,47 @@ Todo el sistema opera bajo una jerarquía desacoplada de 5 agentes especializado
 - **Causa Raíz:** Facebook se integró al Content Manager el 13/10/2026 (commit `c3d12f7`). Todo clip publicado en Instagram previo a esa fecha se replicó automáticamente en Facebook vía crossposting nativo de Meta, pero no figuraba registrado en Supabase, generando un falso stock virgen de 500+ clips.
 - **Backfill y Saneamiento Canónico:** Se ejecutó `backfill_historic_facebook_crosspost.py`, registrando 603 publicaciones históricas en Facebook dentro de Supabase y purgando 35 ítems duplicados de la cola en la VM de Oracle.
 - **Desacople en Preflight:** `morning_preflight_audit.py` desglosa de forma independiente los turnos inmediatos de las próximas 24-36 horas de la proyección semanal (a 7 días), evitando alarmas de "falta de stock" por turnos futuros de vivos no emitidos.
+
+# Blindaje Anti-Doble Publicación Simultánea en YouTube Shorts y Prevención de Colisiones de ID en Cola Meta (Caso #178 — 27/10/2026)
+- **Error Detectado (Doble Short Simultáneo a las 17:00 hs ART):** A las 17:00 hs ART (20:00 UTC) salieron publicados en YouTube Shorts dos videos a la vez: "CÓMO ENCARAR EN EL GYM" (`hUO3qEJMQeo`) y "ESTAN FUNANDO A TOMAS" (`tn2Nb44UeIA`), con solo 21 segundos de diferencia.
+- **Causa Raíz del Doble Short:**
+  1. El Short de archivo "CÓMO ENCARAR EN EL GYM" estaba pre-programado desde el día anterior en YouTube Studio para las 17:00 hs ART (`publishAt = 2026-10-27T20:00:00Z`).
+  2. A las 16:18 hs ART, ingresó el clip urgente de Prendido Fuego subido por Ro Mayorga. El bot de Telegram calculó el próximo turno (17:00 hs ART) y lo subió directamente con `schedule_datetime = 17:00 hs ART`.
+  3. El bot emitió un mensaje indicando que "los clips de archivo se desplazaron ordenadamente (+1 slot)", pero **esa llamada a la API de YouTube jamás existió**: el bot no ejecutó ningún `videos().update` en YouTube Data API sobre el video preexistente ni corrió el script de Ripple Shift. Como además 17:00 hs estaba dentro de la ventana de congelamiento de 3 horas, el archivo preprogramado no se movió.
+  4. YouTube Studio recibió dos videos privados con exactamente el mismo `publishAt` (20:00:00 UTC) y al llegar la hora liberó ambos al mismo tiempo.
+- **Causa Raíz del Descarte Silencioso en Cola Meta (Prendido Fuego a las 17:00 hs):**
+  1. `dynamic_queue_manager.py` generó el ID de cola `q_pf_20261027_1700` para la urgencia de Ro.
+  2. En la cola ya existía un ítem histórico cancelado (`SKIPPED_DUPLICATE`) con ese mismo ID exacto `q_pf_20261027_1700`.
+  3. Al ejecutarse `save_item_state_atomically` en `meta_queue_scheduler.py`, la deduplicación en disco retuvo el primer ítem encontrado (el cancelado) y descartó silenciosamente el ítem `PENDING` de la urgencia, impidiendo que el daemon disparara el clip a las 17:00 hs en Meta.
+- **Soluciones Definitivas Implementadas:**
+  1. **Candado Anti-Colisión en YouTube Data API (`YouTubeApiUploader._shift_colliding_short`):** Antes de programar cualquier video con `schedule_datetime`, se verifica en `youtube_studio_status.json` si ya existe un Short privado en ese mismo slot (±15 min). Si existe, el sistema ejecuta de inmediato `videos().update` sobre el video previo, empujándolo al siguiente slot oficial de la grilla de YouTube Shorts (+1 slot: 10, 13, 17, 20, 23 hs ART) en cascada, garantizando que **jamás dos videos compartan el mismo `publishAt`**.
+  2. **Blindaje Anti-Drop de Ítems `PENDING` en Deduplicador Atómico (`save_item_state_atomically`):** Si existen colisiones de ID en disco, el serializador atómico tiene prohibido descartar un ítem `PENDING` por un ítem previo marcado como `SKIPPED_*`. Siempre preserva el ítem `PENDING` activo.
+  3. **Identificadores Únicos con Sufijo de Clip en Urgencias (`prioritize_clip_to_next_turn`):** Todo ítem prioritario generado por urgencia incorpora el sufijo de su ID de clip (`_u_{clip_id[-6:]}`) y purga activamente cualquier ítem residual `SKIPPED_*` en ese horario antes de la inserción.
+
+# Prioridad Absoluta de Urgencias Frescas Multiplataforma (YouTube Shorts + X) y Blindaje Anti-Robo de Suplementarios (Caso #179 — 27/10/2026)
+- **Principio Rector de Urgencias Frescas (LIFO Multiplataforma Total):**
+  - Toda urgencia de actualidad (y especialmente la más fresca del día, como los clips de Tomás Holder / Prendido Fuego) **DEBE tomar inmediatamente los turnos oficiales más próximos disponibles en TODAS las plataformas: YouTube Shorts, X / Twitter, Instagram Reels, Facebook Reels y TikTok**.
+  - **Jerarquía Obligatoria de Publicación:**
+    1. Primero: **Las urgencias más frescas** toman los turnos horarios más próximos (`SLOT_10`, `SLOT_13`, `SLOT_17`, `SLOT_20`, `SLOT_23` en YouTube Shorts y X; turnos de shows en Meta/TikTok), desplazando en cascada (+1 slot) cualquier contenido pre-programado.
+    2. Segundo: **Los clips más frescos que no son urgencias** (vivos contemporáneos de los últimos 7 días) completan la grilla en riguroso orden cronológico correlativo intra-live FIFO.
+    3. Tercero: El material de archivo se desplaza hacia adelante (Ripple Shift).
+- **Blindaje Anti-Robo de Suplementarios (`find_supplementary_clip_for_platforms`):**
+  - **Error Detectado en Facebook GTA (17:30 hs):** En el turno de las 17:30 hs, Facebook publicó un clip viejo de archivo ("NOS VISITAN DE BOLIVIA DE PELOTA VASCA") en lugar del clip fresco del día ("LOS DENTISTAS NOS OBLIGAN A HABLAR").
+  - **Causa Raíz:** A las 14:30 hs, el turno de Facebook estaba vacío. El buscador suplementario recurrió al catálogo de Telegram y "robó" el clip de los Dentistas para tapar el bache de Facebook a las 14:30 hs, sin chequear que ya estaba agendado para las 17:30 hs. Al llegar las 17:30 hs, como Dentistas ya figuraba publicado en Facebook a las 14:30 hs, el scheduler buscó otro suplementario virgen en Facebook y metió el clip añejo de Bolivia de septiembre.
+  - **Soluciones Definitivas:**
+    1. **Prohibición de Robo de Clips Agendados:** `find_supplementary_clip_for_platforms` tiene prohibido tomar cualquier clip que ya esté en estado `PENDING` en la cola de hoy o de los próximos días. No se desarma un slot futuro para emparchar uno presente.
+    2. **Filtro de Frescura de Catálogo:** Se prohíbe el uso de clips de catálogo con más de 21 días de antigüedad para parches suplementarios silenciosos.
+
+# Prohibición Absoluta de Copys Genéricos / Falsos con Apariencia de IA en X (Twitter) (Caso #180 — 27/10/2026)
+- **Problema Reportado:** En los posts de X / Twitter, el sistema añadía hooks de debate genéricos tipo `¿Te pasó algo así o bancás? 👇🤙`, `¿Bancás o se fueron al pasto? 👇🔥` o `¿Qué opinás de esto? Te leemos 👇`. Estos copys resultaban artificiales, robóticos, parecían redactados por IA sin aportar valor y deslucían la pieza audiovisual.
+- **Directiva Vinculante del Usuario:**
+  * Queda **TERMINANTEMENTE PROHIBIDO** inventar preguntas de debate o frases genéricas en los copies de X.
+  * El formato debe mantenerse **simple, sobrio y directo**: `{TITULO}\n\n🎙️ {Programa}`.
+  * Si el título ya contiene signos de interrogación o exclamación propios de la pieza, se respeta tal cual.
+- **Implementación Técnica:**
+  * Se eliminó el diccionario `X_PROGRAM_HOOKS` de `config.py` y `lib/programs.ts`.
+  * La función `format_x_clip_post` en el uploader de Python y `getFormattedXPost` en TypeScript formatean directamente `{clean_title}\n\n🎙️ {prog_name}`, recortando con puntos suspensivos solo si el título excede los 280 caracteres permitidos por la API de X.
+
+
 
 
