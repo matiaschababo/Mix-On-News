@@ -215,3 +215,9 @@ Todo el sistema opera bajo una jerarquía desacoplada de 5 agentes especializado
 - **Alerta de Stock Añejo:** Si un programa tiene stock únicamente mayor a 14 días, el sistema emite alerta a Telegram para que los editores carguen clips frescos del vivo de hoy en lugar de recurrir ciegamente a meses anteriores.
 - **Inyección en Gemini 2.5 Flash:** `get_dynamic_system_prompt()` en `mixon_agent_core.py` inyecta dinámicamente estos precedentes y aprendizajes operativos para que los agentes razonen con todo el contexto antes de tomar decisiones.
 
+# Replicación Histórica Automática de Meta (Instagram -> Facebook Pre-13/10/2026) y Saneamiento de Inventario (Caso #177 — 27/10/2026)
+- **Causa Raíz:** Facebook se integró al Content Manager el 13/10/2026 (commit `c3d12f7`). Todo clip publicado en Instagram previo a esa fecha se replicó automáticamente en Facebook vía crossposting nativo de Meta, pero no figuraba registrado en Supabase, generando un falso stock virgen de 500+ clips.
+- **Backfill y Saneamiento Canónico:** Se ejecutó `backfill_historic_facebook_crosspost.py`, registrando 603 publicaciones históricas en Facebook dentro de Supabase y purgando 35 ítems duplicados de la cola en la VM de Oracle.
+- **Desacople en Preflight:** `morning_preflight_audit.py` desglosa de forma independiente los turnos inmediatos de las próximas 24-36 horas de la proyección semanal (a 7 días), evitando alarmas de "falta de stock" por turnos futuros de vivos no emitidos.
+
+
