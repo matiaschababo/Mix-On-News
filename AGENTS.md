@@ -268,6 +268,16 @@ Todo el sistema opera bajo una jerarquía desacoplada de 5 agentes especializado
   * **Principio Inviolable de Cero Pérdida de Turnos ("No perder turnos por nada en el mundo"):** Cada show debe cumplir de manera inquebrantable con sus 4 turnos oficiales diarios (16 turnos de shows diarios + slots de Shorts/Matriz). Ningún turno horario puede quedar desierto si existe material disponible.
   * **Cero Duplicados en esa Red:** Cada clip emitido debe ser 100% virgen en la cuenta o plataforma de destino.
 
+# Desacople Arquitectónico de Canales Matriz (X y Shorts) vs Cuentas de Show y Blindaje de Hilo Conductor de Urgencias (Caso #182 — 27/10/2026)
+- **Causa Raíz Identificada:**
+  1. `dynamic_queue_manager.py` calculaba el próximo slot evaluando únicamente `PROGRAM_SLOTS[prog_code]`. Para Prendido Fuego (`PF`), la grilla de su cuenta termina a las 20:00 hs (`11, 14, 17, 20`). El script ignoraba que X (`@Mixontv_`) y YouTube Shorts (`@Mixontv_`) son canales matriz con 5 turnos oficiales diarios que incluyen el slot nocturno de las **`23:00 hs ART`**.
+  2. `insert_fresh_clip_with_ripple_shift` solo desplazaba ítems del mismo programa (`it.get("program_code") == prog`). Al ingresar una urgencia de PF a las 20:00 hs en X, el ítem preexistente era de FDF. El script no realizó el Ripple Shift multi-programa en X y una reubicación ad-hoc lo saltó a mañana a las 10:00 AM al ver ocupado el turno de las 23:00 con FDF, violando la cascada estricta (+1 slot).
+  3. La rotación estática de X a las 17:00 hs bloqueó el Clip 01 de Holder en X, provocando que quedara desincronizado de las demás redes.
+- **Reglas Vinculantes y Soluciones Definitivas:**
+  * **Urgencias Consecutivas al Hilo en Canales Matriz:** Si una emisión genera dos o más urgencias correlativas (ej. Clip 01 "Están funando a Tomás" y Clip 02 "Holder vs Pepe Ochoa"), se emiten en riguroso orden cronológico correlativo ("al hilo") en los turnos más próximos disponibles de cada red (ej. en X: 20:00 hs y 23:00 hs).
+  * **Ripple Shift Multi-Programa de Canal:** En canales compartidos (X y Shorts), el Ripple Shift opera a nivel de canal: un clip prioritario desplaza al ítem inmediatamente posterior (+1 slot) sin importar a qué show pertenezca, empujando en cascada secuencial sin saltearse ningún slot nocturno.
+
+
 
 
 
